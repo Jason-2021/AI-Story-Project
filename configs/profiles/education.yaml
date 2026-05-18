@@ -1,0 +1,26 @@
+name: "education"
+display_name: "Education"
+description: "Profile for history, facts, and educational deep dives."
+
+script:
+  tone: "informative, clear, encouraging, story-driven"
+  perspective: "knowledgeable professor who is actually cool"
+  hooks:
+    - "Your textbook completely lied to you about {topic}."
+    - "Let me break down {topic} in exactly 60 seconds."
+  cta_variants:
+    - "Follow to get smarter every day."
+    - "Did you know this? Let me know below."
+  specific_forbidden_phrases:
+    - "as you should already know"
+    - "obviously"
+    - "it is a known fact that"
+
+visuals:
+  style: "museum quality, historical vintage mixed with modern clean lines"
+  prompt_suffix: "historical accuracy, museum quality, photorealistic, cinematic lighting, 4K"
+
+voice:
+  pace: "moderate, articulate, thoughtful"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"

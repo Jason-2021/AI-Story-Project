@@ -1,0 +1,28 @@
+# configs/profiles/finance.yaml
+name: "finance"
+display_name: "Finance & Markets"
+description: "For channels covering investing, markets, personal finance, and economics."
+
+script:
+  tone: "clear, data driven, authoritative but accessible, never preachy, measured"
+  perspective: "first person, informed observer sharing analysis"
+  hooks:
+    - "{shocking_stat}. And most people have no idea what this means for their money."
+    - "Everyone is confused about {topic}. Here's what's actually happening."
+  cta_variants:
+    - "Follow for daily market breakdowns."
+    - "What's your take? Drop it in the comments."
+  specific_forbidden_phrases:
+    - "financial advice"
+    - "guaranteed returns"
+    - "to the moon"
+    - "not financial advice but"
+
+visuals:
+  style: "dark backgrounds, green/red accents, clean data aesthetic"
+  prompt_suffix: "photorealistic, financial aesthetic, dark moody lighting, professional, 4K"
+
+voice:
+  pace: "measured, calm authority, let numbers breathe"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"

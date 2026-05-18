@@ -1,0 +1,27 @@
+name: "science"
+display_name: "Science & Discovery"
+description: "For channels covering scientific breakthroughs, space, nature, and research."
+
+script:
+  tone: "curious, awestruck, accessible, makes complex things simple"
+  perspective: "enthusiastic guide making science tangible"
+  hooks:
+    - "Scientists just discovered something that rewrites what we know about {topic}."
+    - "If {thing} were the size of {comparison}, {mind_blowing_fact}."
+    - "Why does {phenomenon} happen? The answer took scientists {timeframe} to figure out."
+  cta_variants:
+    - "Follow for daily science in 60 seconds."
+    - "Subscribe for discoveries that blow your mind."
+  specific_forbidden_phrases:
+    - "scientists baffled"
+    - "they don't want you to know"
+    - "quantum (unless strictly necessary)"
+
+visuals:
+  style: "cosmic, microscopic, natural wonder, high production value"
+  prompt_suffix: "scientific visualization, awe inspiring, dramatic scale, NASA quality, cinematic, 4K"
+
+voice:
+  pace: "measured, curious, building excitement"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"

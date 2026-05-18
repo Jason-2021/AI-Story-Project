@@ -1,0 +1,19 @@
+# configs/base_config.yaml
+video_settings:
+  target_duration_seconds: 60
+  target_word_count: "135 to 145" # 黃金 60 秒語速
+  min_scenes: 4
+  max_scenes: 5
+  script_structure: "Context, Escalation, Climax / Clear Takeaway" # 強制分鏡推進故事
+
+global_forbidden_phrases:
+  - "like and subscribe"
+  - "smash that bell"
+  - "what's up guys"
+  - "without further ado"
+  - "welcome back to my channel"
+  - "in today's video"
+
+image_generation_rules:
+  strict_no_text: true
+  aspect_ratio: "9:16"

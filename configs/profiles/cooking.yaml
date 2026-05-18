@@ -1,0 +1,27 @@
+# configs/profiles/cooking.yaml
+name: "cooking"
+display_name: "Food & Cooking"
+description: "For channels covering recipes, food trends, restaurant culture, and cooking tips."
+
+script:
+  tone: "warm, sensory, inviting, makes you hungry, relaxed but purposeful"
+  perspective: "friend sharing a discovery"
+  hooks:
+    - "I found the best {dish} recipe and it takes 10 minutes."
+    - "Restaurant chefs don't want you to know this one trick."
+  cta_variants:
+    - "Follow for daily recipe ideas."
+    - "Save this recipe for later."
+  specific_forbidden_phrases:
+    - "yummy"
+    - "to die for"
+    - "foodie"
+
+visuals:
+  style: "warm lighting, close up textures, steam and movement, food photography"
+  prompt_suffix: "food photography, warm natural lighting, appetizing, shallow depth of field, rustic, 4K"
+
+voice:
+  pace: "relaxed, warm, enthusiastic but not loud"
+  suggested_voices:
+    edge_tts: "en-US-JennyNeural"

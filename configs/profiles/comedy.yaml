@@ -1,0 +1,26 @@
+name: "comedy"
+display_name: "Comedy"
+description: "Profile for humor, satire, and comedic commentary."
+
+script:
+  tone: "humorous, witty, slightly sarcastic, relatable"
+  perspective: "the funny friend pointing out absurdities"
+  hooks:
+    - "Nobody is talking about how ridiculous {topic} actually is."
+    - "I tried to understand {topic} so you don't have to."
+  cta_variants:
+    - "Tag a friend who does this."
+    - "Follow if this made you smile."
+  specific_forbidden_phrases:
+    - "no offense but"
+    - "just kidding"
+    - "knock knock"
+
+visuals:
+  style: "bright colors, slightly exaggerated expressions, meme-adjacent"
+  prompt_suffix: "vibrant colors, expressive, high quality, funny concept, 4K"
+
+voice:
+  pace: "fast, playful, excellent comedic timing"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"

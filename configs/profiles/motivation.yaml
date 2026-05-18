@@ -1,0 +1,26 @@
+name: "motivation"
+display_name: "Motivation"
+description: "Profile for motivation and personal growth content."
+
+script:
+  tone: "inspiring, high-energy, uplifting, authoritative yet empathetic"
+  perspective: "mentor sharing life-changing advice"
+  hooks:
+    - "This one mindset shift will change how you view {topic} forever."
+    - "Stop doing this if you want to achieve {goal}."
+  cta_variants:
+    - "Save this to remind yourself later."
+    - "Send this to someone who needs to hear it."
+  specific_forbidden_phrases:
+    - "give up"
+    - "it's impossible"
+    - "you can't"
+
+visuals:
+  style: "cinematic, dramatic shadows, professional, focusing on human emotion"
+  prompt_suffix: "photorealistic, cinematic lighting, dramatic contrast, high quality, 4K"
+
+voice:
+  pace: "deliberate, strong emphasis on key words, powerful"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"

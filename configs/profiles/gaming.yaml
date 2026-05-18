@@ -1,0 +1,28 @@
+# configs/profiles/gaming.yaml
+name: "gaming"
+display_name: "Gaming News & Culture"
+description: "For channels covering gaming news, esports, game releases, and gaming culture."
+
+script:
+  tone: "energetic, opinionated, community insider, knows the references, fast and punchy"
+  perspective: "first person, fellow gamer talking to gamers"
+  hooks:
+    - "This changes {game} forever. I'm not exaggerating."
+    - "The {game} community is at war right now. Here's what happened."
+    - "{company} just did the one thing nobody wanted. And it's worse than you think."
+  cta_variants:
+    - "Drop your take in the comments."
+    - "Part 2 tomorrow. Don't miss it."
+  specific_forbidden_phrases:
+    - "what's up gamers"
+    - "this video is sponsored by"
+    - "raid shadow legends"
+
+visuals:
+  style: "vibrant, high contrast, game aesthetic inspired, dark backgrounds with colorful accents"
+  prompt_suffix: "gaming aesthetic, dramatic lighting, high contrast, cinematic, vibrant colors, 4K quality"
+
+voice:
+  pace: "fast, slightly breathless energy"
+  suggested_voices:
+    edge_tts: "en-US-ChristopherNeural"

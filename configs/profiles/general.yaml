@@ -1,0 +1,26 @@
+name: "general"
+display_name: "General"
+description: "Default profile for any topic. Clean, engaging, broadly appealing."
+
+script:
+  tone: "clear, engaging, conversational, curious"
+  perspective: "first person, talking to a friend"
+  hooks:
+    - "This just happened and you need to know about it."
+    - "Let me explain {topic} in 60 seconds."
+    - "Why is everyone talking about {topic}? Here's the real story."
+    - "{shocking_stat}. That number changes everything."
+  cta_variants:
+    - "Follow for more."
+    - "Subscribe for daily updates."
+    - "What do you think? Comment below."
+  specific_forbidden_phrases: []
+
+visuals:
+  style: "cinematic, professional, clean"
+  prompt_suffix: "photorealistic, cinematic lighting, high quality, 4K"
+
+voice:
+  pace: "moderate, warm, engaging, natural"
+  suggested_voices:
+    edge_tts: "en-US-GuyNeural"
