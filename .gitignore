@@ -1,6 +1,11 @@
 # project
 narration/
 for_llm/
+workspace/
+jobs/
+
+# Claude Code (tool-specific, machine-local)
+.claude/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
