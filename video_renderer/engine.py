@@ -54,10 +54,12 @@ def _build_scene_clip(
     fps        = settings.get("fps", 24)
     n_words    = settings.get("caption_words_per_group", 3)
     pos_y      = settings.get("caption_position_y_ratio", 0.65)
-    font_size  = settings.get("caption_font_size", 80)
+    font_size  = settings.get("caption_font_size", 100)
     hi_color   = settings.get("caption_highlight_color", "#FFD700")
+    uppercase  = settings.get("caption_uppercase", False)
     kb_strat   = settings.get("ken_burns_strategy", "alternate_lr")
     zm_strat   = settings.get("zoom_strategy", "alternate")
+    zoom_amt   = settings.get("zoom_amount", 0.1)
 
     audio_clip = AudioFileClip(str(audio_path))
     duration   = audio_clip.duration
@@ -75,8 +77,8 @@ def _build_scene_clip(
     elif aspect == "9:16":
         scaled_np = scale_9x16(raw_np, canvas_w, canvas_h)
         direction = ZOOM_STRATEGIES[zm_strat](scene_idx)
-        def _get_frame(t, _img=scaled_np, _dur=duration, _dir=direction):
-            return make_zoom_frame(_img, t, _dur, _dir, canvas_w, canvas_h)
+        def _get_frame(t, _img=scaled_np, _dur=duration, _dir=direction, _za=zoom_amt):
+            return make_zoom_frame(_img, t, _dur, _dir, canvas_w, canvas_h, _za)
 
     else:
         # Fallback: 靜態填滿畫布
@@ -94,9 +96,9 @@ def _build_scene_clip(
                    _groups=word_groups,
                    _font=font,
                    _cw=canvas_w, _ch=canvas_h,
-                   _py=pos_y, _hc=hi_color):
+                   _py=pos_y, _hc=hi_color, _uc=uppercase):
         frame = _get(t)
-        frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc)
+        frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc, _uc)
         return frame
 
     clip = VideoClip(make_frame, duration=duration).with_fps(fps)

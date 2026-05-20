@@ -71,10 +71,12 @@ def render_captions(
     font: ImageFont.FreeTypeFont,
     position_y_ratio: float,
     highlight_color: str,
+    uppercase: bool = False,
 ) -> np.ndarray:
     """
     在 frame 上疊加字幕，當前說的字高亮。
     frame: uint8 HxWx3 numpy array
+    uppercase: 由 base_config.yaml 的 caption_uppercase 控制
     回傳: 同格式 numpy array
     """
     active_group, active_idx = _find_active(word_groups, t)
@@ -84,7 +86,7 @@ def render_captions(
     img = Image.fromarray(frame)
     draw = ImageDraw.Draw(img)
 
-    words = [w.word for w in active_group]
+    words = [w.word.upper() if uppercase else w.word for w in active_group]
     highlight_rgb = _hex_to_rgb(highlight_color)
     stroke = max(2, int(font.size * 0.05))
 

@@ -51,7 +51,9 @@ async def generate_images_router(
     print(f"\n🖼️  [ImageRouter] 啟動圖片生成 | {len(scenes)} 個場景 | 引擎: {provider}")
 
     image_settings = _get_image_settings()
-    model_name = image_settings.get("model_name", "imagen-3.0-generate-002")
+    model_name = image_settings.get("model_name")
+    if not model_name:
+        raise ValueError("❌ [ImageRouter] base_config.yaml 的 image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
     aspect_ratio = image_settings.get("aspect_ratio", "9:16")
 
     if provider.lower() == "gemini":

@@ -25,7 +25,24 @@ def _fade_black(clips: list, duration: float = 0.3) -> list:
     return result
 
 
+def _crossfade(clips: list, duration: float = 0.4) -> list:
+    """
+    交叉溶解：每個場景結尾淡出，下一個場景開頭淡入（視覺交疊）。
+    比 fade_black 更流暢，適合敘事型短影音。
+    """
+    result = []
+    for i, clip in enumerate(clips):
+        effects = []
+        if i > 0:
+            effects.append(vfx.CrossFadeIn(duration))
+        if i < len(clips) - 1:
+            effects.append(vfx.CrossFadeOut(duration))
+        result.append(clip.with_effects(effects) if effects else clip)
+    return result
+
+
 TRANSITION_REGISTRY = {
     "hard_cut":   lambda clips: _hard_cut(clips),
     "fade_black": lambda clips: _fade_black(clips, duration=0.3),
+    "crossfade":  lambda clips: _crossfade(clips, duration=0.4),
 }

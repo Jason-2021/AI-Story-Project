@@ -12,8 +12,8 @@ def _log_retry(retry_state):
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=5, max=60),
     reraise=True,
     before_sleep=_log_retry,
 )

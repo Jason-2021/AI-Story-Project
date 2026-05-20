@@ -92,14 +92,17 @@ def make_zoom_frame(
     direction: str,
     canvas_w: int,
     canvas_h: int,
+    zoom_amount: float = 0.1,
 ) -> np.ndarray:
     """
     對已縮放至 canvas 大小的 9:16 圖片套用中心縮放效果。
-    zoom_in: 1.0x → 1.1x（逐漸放大）
-    zoom_out: 1.1x → 1.0x（逐漸縮小）
+    zoom_in:  1.0x → (1.0 + zoom_amount)x
+    zoom_out: (1.0 + zoom_amount)x → 1.0x
+    zoom_amount 由 base_config.yaml 的 zoom_amount 控制（建議範圍 0.10~0.20）。
     """
     progress = t / duration
-    scale = (1.0 + 0.1 * progress) if direction == "zoom_in" else (1.1 - 0.1 * progress)
+    peak = 1.0 + zoom_amount
+    scale = (1.0 + zoom_amount * progress) if direction == "zoom_in" else (peak - zoom_amount * progress)
 
     crop_w = int(canvas_w / scale)
     crop_h = int(canvas_h / scale)

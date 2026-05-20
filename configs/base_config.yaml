@@ -38,11 +38,13 @@ video_renderer:
   fps: 24
   ken_burns_strategy: "alternate_lr"   # 可換: all_left_to_right, all_right_to_left
   zoom_strategy: "alternate"           # 可換: zoom_in, zoom_out
-  transition: "hard_cut"              # 可換: fade_black
+  zoom_amount: 0.12                    # 可換: 0.10 ~ 0.20，越大鏡頭移動越明顯
+  transition: "hard_cut"              # 可換: fade_black, crossfade
   caption_words_per_group: 3
   caption_position_y_ratio: 0.65
-  caption_font_size: 80
+  caption_font_size: 100
   caption_highlight_color: "#FFD700"
+  caption_uppercase: true             # 可換: false
 
 image_generation_rules:
   strict_no_text: true

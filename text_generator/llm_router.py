@@ -69,6 +69,7 @@ def _build_system_prompt(profile_name: str) -> str:
             profile_tone=profile_config.get("script", {}).get("tone", ""),
             base_word_count=base_config.get("video_settings", {}).get("target_word_count", "135 to 145"),
             base_max_scenes=base_config.get("video_settings", {}).get("max_scenes", 5),
+            script_structure=base_config.get("video_settings", {}).get("script_structure", "Context, Escalation, Climax"),
             global_forbidden=", ".join(f"'{p}'" for p in merged_forbidden),
             profile_hooks=" | ".join(hooks) if hooks else "None",
             profile_ctas=" or ".join(ctas) if ctas else "None",
