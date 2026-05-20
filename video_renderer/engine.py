@@ -57,6 +57,7 @@ def _build_scene_clip(
     font_size  = settings.get("caption_font_size", 100)
     hi_color   = settings.get("caption_highlight_color", "#FFD700")
     uppercase  = settings.get("caption_uppercase", False)
+    max_w_ratio = settings.get("caption_max_width_ratio", 0.9)
     kb_strat   = settings.get("ken_burns_strategy", "alternate_lr")
     zm_strat   = settings.get("zoom_strategy", "alternate")
     zoom_amt   = settings.get("zoom_amount", 0.1)
@@ -96,9 +97,9 @@ def _build_scene_clip(
                    _groups=word_groups,
                    _font=font,
                    _cw=canvas_w, _ch=canvas_h,
-                   _py=pos_y, _hc=hi_color, _uc=uppercase):
+                   _py=pos_y, _hc=hi_color, _uc=uppercase, _mw=max_w_ratio):
         frame = _get(t)
-        frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc, _uc)
+        frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc, _uc, _mw)
         return frame
 
     clip = VideoClip(make_frame, duration=duration).with_fps(fps)

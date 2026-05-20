@@ -45,6 +45,7 @@ video_renderer:
   caption_font_size: 100
   caption_highlight_color: "#FFD700"
   caption_uppercase: true             # 可換: false
+  caption_max_width_ratio: 0.90       # 字幕最大寬度為畫布的比例（超過自動換行）
 
 image_generation_rules:
   strict_no_text: true
