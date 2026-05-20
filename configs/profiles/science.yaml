@@ -21,7 +21,10 @@ visuals:
   style: "cosmic, microscopic, natural wonder, high production value"
   prompt_suffix: "scientific visualization, awe inspiring, dramatic scale, NASA quality, cinematic, 4K"
 
-voice:
-  pace: "measured, curious, building excitement"
-  suggested_voices:
-    edge_tts: "en-US-GuyNeural"
+series:
+  continuation_hooks:
+    - "Last episode we cracked {previous_reveal}. Today it gets even stranger."
+    - "Episode {ep_num} of {total}: Here's where the science starts to break everything."
+  series_cta_variants:
+    - "Episode {next_ep} drops soon — follow so you don't miss it."
+    - "Save this series. It only gets more mind-bending from here."

@@ -8,6 +8,7 @@ script:
   hooks:
     - "Your textbook completely lied to you about {topic}."
     - "Let me break down {topic} in exactly 60 seconds."
+    - "The real story behind {topic} is so much stranger than what you were taught."
   cta_variants:
     - "Follow to get smarter every day."
     - "Did you know this? Let me know below."
@@ -18,9 +19,4 @@ script:
 
 visuals:
   style: "museum quality, historical vintage mixed with modern clean lines"
-  prompt_suffix: "historical accuracy, museum quality, photorealistic, cinematic lighting, 4K"
-
-voice:
-  pace: "moderate, articulate, thoughtful"
-  suggested_voices:
-    edge_tts: "en-US-GuyNeural"
+  prompt_suffix: "educational concept visualization, photorealistic, cinematic lighting, high quality, 4K"

@@ -19,8 +19,3 @@ script:
 visuals:
   style: "cinematic, professional, clean"
   prompt_suffix: "photorealistic, cinematic lighting, high quality, 4K"
-
-voice:
-  pace: "moderate, warm, engaging, natural"
-  suggested_voices:
-    edge_tts: "en-US-GuyNeural"

@@ -8,7 +8,8 @@ script:
   perspective: "friend sharing a discovery"
   hooks:
     - "I found the best {dish} recipe and it takes 10 minutes."
-    - "Restaurant chefs don't want you to know this one trick."
+    - "This one technique is what separates home cooks from professionals."
+    - "The difference between a good {dish} and a great one is one ingredient you already have."
   cta_variants:
     - "Follow for daily recipe ideas."
     - "Save this recipe for later."
@@ -20,8 +21,3 @@ script:
 visuals:
   style: "warm lighting, close up textures, steam and movement, food photography"
   prompt_suffix: "food photography, warm natural lighting, appetizing, shallow depth of field, rustic, 4K"
-
-voice:
-  pace: "relaxed, warm, enthusiastic but not loud"
-  suggested_voices:
-    edge_tts: "en-US-JennyNeural"

@@ -1,0 +1,27 @@
+# configs/profiles/fitness.yaml
+name: "fitness"
+display_name: "Fitness & Health"
+description: "For channels covering workouts, nutrition, athletic performance, and healthy habits."
+
+script:
+  tone: "energetic, evidence-based, empowering, practical, never preachy"
+  perspective: "experienced training partner sharing what actually works"
+  hooks:
+    - "Most people train for months without results. Here's the one thing they're missing."
+    - "Scientists found that {exercise} activates {X} more muscle fibers than the standard method. Here's why."
+    - "You've been doing {exercise} wrong your entire life. This small fix changes everything."
+  cta_variants:
+    - "Save this for your next workout."
+    - "Follow for science-backed fitness tips."
+    - "Try this today and let me know how it goes."
+  specific_forbidden_phrases:
+    - "no pain no gain"
+    - "get fit fast"
+    - "body goals"
+    - "shred"
+    - "tone up"
+    - "summer body"
+
+visuals:
+  style: "dynamic motion, athletic environments, dramatic lighting, high energy"
+  prompt_suffix: "athletic aesthetic, dynamic motion, dramatic lighting, photorealistic, 4K"

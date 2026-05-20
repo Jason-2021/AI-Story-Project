@@ -8,19 +8,16 @@ script:
   hooks:
     - "This one mindset shift will change how you view {topic} forever."
     - "Stop doing this if you want to achieve {goal}."
+    - "The most successful people don't work harder than you. They do this one thing differently."
   cta_variants:
     - "Save this to remind yourself later."
     - "Send this to someone who needs to hear it."
   specific_forbidden_phrases:
-    - "give up"
-    - "it's impossible"
-    - "you can't"
+    - "just believe in yourself"
+    - "overnight success"
+    - "fake it till you make it"
+    - "hustle 24/7"
 
 visuals:
   style: "cinematic, dramatic shadows, professional, focusing on human emotion"
   prompt_suffix: "photorealistic, cinematic lighting, dramatic contrast, high quality, 4K"
-
-voice:
-  pace: "deliberate, strong emphasis on key words, powerful"
-  suggested_voices:
-    edge_tts: "en-US-GuyNeural"

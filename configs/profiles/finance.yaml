@@ -9,6 +9,7 @@ script:
   hooks:
     - "{shocking_stat}. And most people have no idea what this means for their money."
     - "Everyone is confused about {topic}. Here's what's actually happening."
+    - "The biggest wealth transfer in {timeframe} is happening right now. And most people are on the wrong side of it."
   cta_variants:
     - "Follow for daily market breakdowns."
     - "What's your take? Drop it in the comments."
@@ -21,8 +22,3 @@ script:
 visuals:
   style: "dark backgrounds, green/red accents, clean data aesthetic"
   prompt_suffix: "photorealistic, financial aesthetic, dark moody lighting, professional, 4K"
-
-voice:
-  pace: "measured, calm authority, let numbers breathe"
-  suggested_voices:
-    edge_tts: "en-US-GuyNeural"
