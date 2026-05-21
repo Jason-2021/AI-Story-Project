@@ -59,6 +59,39 @@ def _read_text_file(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
+_COMPOSITION_RULES = {
+    "16:9": (
+        "PANORAMIC — wide/landscape shot. Place the key subject at the LEFT or RIGHT third "
+        "of the frame, never dead center. Every horizontal slice must be visually interesting on its own."
+    ),
+    "9:16": (
+        "PORTRAIT — vertical shot. Place the key subject CENTERED and filling roughly "
+        "60-80% of the vertical space. Avoid placing important elements near the edges."
+    ),
+    "1:1": (
+        "SQUARE — balanced composition. Key subject centered, works well cropped either direction."
+    ),
+}
+
+def _get_scene_ratios(mode: str, n_scenes: int) -> list:
+    if mode == "all_16_9":      return ["16:9"] * n_scenes
+    if mode == "all_9_16":      return ["9:16"] * n_scenes
+    if mode == "all_1_1":       return ["1:1"]  * n_scenes
+    if mode == "alternate":     return ["16:9" if i % 2 == 0 else "9:16" for i in range(n_scenes)]
+    if mode == "wide_first":    return ["16:9"] + ["9:16"] * max(0, n_scenes - 1)
+    if mode == "portrait_heavy":
+        pattern = ["9:16", "9:16", "16:9", "9:16", "9:16"]
+        return [pattern[i % len(pattern)] for i in range(n_scenes)]
+    return ["16:9"] * n_scenes
+
+def _scene_composition_guide(ratio_mode: str, n_scenes: int) -> str:
+    ratios = _get_scene_ratios(ratio_mode, n_scenes)
+    lines = ["Per-scene composition guide — follow EXACTLY for each image_prompt:"]
+    for i, ratio in enumerate(ratios, 1):
+        rule = _COMPOSITION_RULES.get(ratio, "")
+        lines.append(f"  Scene {i}: {ratio} → {rule}")
+    return "\n".join(lines)
+
 def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = None, cta_enabled: bool = True) -> str:
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
     profile_config = _load_yaml(CONFIG_DIR / "profiles" / f"{profile_name}.yaml")
@@ -70,21 +103,6 @@ def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = No
 
     hooks = profile_config.get("script", {}).get("hooks", [])
     ctas = profile_config.get("script", {}).get("cta_variants", [])
-
-    aspect = base_config.get("image_settings", {}).get("aspect_ratio", "9:16")
-    if aspect == "16:9":
-        composition_style = (
-            "PANORAMIC COMPOSITION: Images are displayed with horizontal panning (Ken Burns effect). "
-            "Compose every scene as a WIDE PANORAMIC environment. Place the key subject at the left "
-            "or right third of the frame — never dead center. Every horizontal slice of the image "
-            "must be visually interesting on its own."
-        )
-    else:
-        composition_style = (
-            "PORTRAIT COMPOSITION: Images are displayed with a center zoom effect. "
-            "Place the KEY SUBJECT centered in the frame, filling roughly 60-80% of the vertical space. "
-            "Avoid placing important elements near the edges of the frame."
-        )
 
     series_context = _build_series_context(episode_context) if episode_context else ""
 
@@ -103,7 +121,6 @@ def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = No
             global_forbidden=", ".join(f"'{p}'" for p in merged_forbidden),
             profile_hooks=" | ".join(hooks) if hooks else "None",
             profile_prompt_suffix=profile_config.get("visuals", {}).get("prompt_suffix", ""),
-            image_composition_style=composition_style,
             series_context=series_context,
             cta_rule=cta_rule,
         )
@@ -142,12 +159,13 @@ def _build_series_context(ctx: dict) -> str:
     )
 
 
-def _build_user_prompt(topic: str, details: str) -> str:
+def _build_user_prompt(topic: str, details: str, ratio_mode: str = "all_16_9", n_scenes: int = 5) -> str:
     prompt = f"Topic: {topic}\n"
     if details and details.strip():
         prompt += f"Details: {details}\n"
     else:
         prompt += "Details: (No additional details provided. Use your global knowledge.)\n"
+    prompt += f"\n{_scene_composition_guide(ratio_mode, n_scenes)}\n"
     return prompt
 
 def _get_llm_settings() -> dict:
@@ -166,8 +184,12 @@ async def generate_script_router(request: ScriptRequest) -> VideoScript:
     print(f"\n🚀 [Router] 啟動劇本生成任務 | 風格: {request.profile_name} | 引擎: {request.provider}")
 
     print("⏳ [Router] 正在合併 YAML 設定與提示詞模板...")
+    base_cfg = _load_yaml(CONFIG_DIR / "base_config.yaml")
+    ratio_mode = base_cfg.get("image_settings", {}).get("scene_ratio_mode", "all_16_9")
+    n_scenes = base_cfg.get("video_settings", {}).get("max_scenes", 5)
+
     system_msg = _build_system_prompt(request.profile_name, request.episode_context, request.cta_enabled)
-    user_msg = _build_user_prompt(request.topic, request.details)
+    user_msg = _build_user_prompt(request.topic, request.details, ratio_mode, n_scenes)
 
     llm_settings = _get_llm_settings()
     model_name = llm_settings.get("model_name", "gemini-2.5-flash")

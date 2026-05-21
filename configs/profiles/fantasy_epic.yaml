@@ -1,0 +1,26 @@
+name: "fantasy_epic"
+display_name: "Fantasy — Epic Narrator"
+description: "Dark fantasy stories told by a grand omniscient narrator. Solemn, cinematic, fate-driven."
+
+script:
+  tone: "solemn, grandiose, poetic, carries the weight of fate"
+  perspective: "omniscient narrator recounting legend as though carving it into stone"
+  hooks:
+    - "Before the age of kings, before the gods fell silent, there was {protagonist}."
+    - "They said {prophecy}. No one believed it. Until the night {event} changed everything."
+    - "Every empire ends. But the fall of {kingdom} was not just an end — it was a reckoning."
+    - "{number} warriors entered {place}. Only one came back. And what they saw there cannot be unseen."
+  cta_variants:
+    - "The legend continues. Follow to witness what comes next."
+    - "This is only the beginning. Subscribe to see how it ends."
+    - "Every hero has a price. Follow to find out {protagonist}'s."
+  specific_forbidden_phrases:
+    - "guys"
+    - "let me tell you"
+    - "so basically"
+    - "okay so"
+    - "epic fail"
+
+visuals:
+  style: "dark fantasy, oil painting meets cinematic photography, dramatic chiaroscuro, ruins and ancient power"
+  prompt_suffix: "dark fantasy, dramatic chiaroscuro lighting, epic scale, ancient ruins, cinematic, oil painting texture, 4K"

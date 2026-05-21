@@ -1,0 +1,26 @@
+name: "fantasy_first_person"
+display_name: "Fantasy — First Person POV"
+description: "Dark fantasy told from the protagonist's own voice. Intimate, raw, pulls the viewer into the character's skin."
+
+script:
+  tone: "raw, intimate, haunted, speaks like someone who has survived things they shouldn't have"
+  perspective: "the protagonist narrating their own story — confessional, direct, unfiltered"
+  hooks:
+    - "I didn't choose to be the one who survived. I chose to keep moving anyway."
+    - "The first time I killed something, I told myself it wasn't murder. I was wrong."
+    - "They called me {title}. I called it a target on my back."
+    - "I've seen what lives in the dark. And the worst part? It recognized me."
+  cta_variants:
+    - "Follow. I'm not done with this story yet."
+    - "You want to know what happened next. Follow to find out."
+    - "The story doesn't end here. Subscribe to stay with me."
+  specific_forbidden_phrases:
+    - "as you know"
+    - "in this video"
+    - "let me explain"
+    - "spoiler alert"
+    - "epic"
+
+visuals:
+  style: "dark fantasy, intimate close-ups, emotional lighting, shadows that tell secrets"
+  prompt_suffix: "dark fantasy, intimate perspective, moody atmospheric lighting, close-up cinematic, shadows and candlelight, photorealistic, 4K"

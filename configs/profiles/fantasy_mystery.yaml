@@ -1,0 +1,26 @@
+name: "fantasy_mystery"
+display_name: "Fantasy — Mystery & Suspense"
+description: "Dark fantasy woven with unsolved riddles and mounting dread. Every scene reveals a clue, every answer births a deeper question."
+
+script:
+  tone: "unsettling, precise, slow-burning tension, speaks in half-truths and implications"
+  perspective: "an unreliable guide who knows more than they reveal"
+  hooks:
+    - "There are {number} things the kingdom does not want you to know about {event}. This is one of them."
+    - "The body was found at dawn. The strange part? {victim} had been dead for three days already."
+    - "{name} vanished the night of {event}. No one asked why. No one dared to."
+    - "Every door in {place} was locked from the inside. Every one. Ask yourself how."
+  cta_variants:
+    - "The truth is buried deeper. Follow to keep digging."
+    - "Something is wrong in {place}. Follow to find out what."
+    - "You feel it too, don't you? Subscribe. Stay close."
+  specific_forbidden_phrases:
+    - "obviously"
+    - "clearly"
+    - "as you can see"
+    - "the answer is simple"
+    - "spoiler"
+
+visuals:
+  style: "dark fantasy noir, fog and shadow, hidden details in every frame, oppressive atmosphere"
+  prompt_suffix: "dark fantasy noir, thick atmospheric fog, hidden symbols, dim candlelight, oppressive shadow, mysterious, cinematic, photorealistic, 4K"

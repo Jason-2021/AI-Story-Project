@@ -19,6 +19,7 @@ async def run_series_mode(
     arc_only: bool = False,
     episodes_filter: Optional[list] = None,
     provider_override: Optional[str] = None,
+    text_only: bool = False,
 ) -> None:
     """
     Full series pipeline:
@@ -89,11 +90,15 @@ async def run_series_mode(
             episode_outline=ep_outline,
             series_arc=arc,
             cta_enabled=cta_enabled,
+            text_only=text_only,
         )
-        series_state_manager.mark_episode_status(series_id, ep_num, "completed")
+        if not text_only:
+            series_state_manager.mark_episode_status(series_id, ep_num, "completed")
 
     # ── Long-Form Merge ───────────────────────────────────────────────
-    if combine_long_form and episodes_filter is None:
+    if text_only:
+        print("\n⚠️  [Series] text-only 模式，跳過長影片合併。")
+    elif combine_long_form and episodes_filter is None:
         all_done = all(
             series_state_manager.get_episode_status(series_id, i + 1) == "completed"
             for i in range(n_episodes)
@@ -119,7 +124,7 @@ async def run_series_mode(
     print("=" * 50)
 
 
-async def run_anthology_mode(job: dict) -> None:
+async def run_anthology_mode(job: dict, text_only: bool = False) -> None:
     """
     Anthology pipeline: N independent episodes with the same profile.
     No arc planning. Each topic runs through the standard pipeline.
@@ -145,6 +150,7 @@ async def run_anthology_mode(job: dict) -> None:
             profile=profile,
             provider=provider,
             cta_enabled=cta_enabled,
+            text_only=text_only,
         )
 
     print("\n" + "=" * 50)

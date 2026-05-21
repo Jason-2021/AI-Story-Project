@@ -49,6 +49,7 @@ def _parse_args():
     parser.add_argument("--resume",         type=str, default=None,    help="恢復指定的單集 run_id")
     parser.add_argument("--job",            type=str, default=None,    help="Job YAML 檔案路徑")
     parser.add_argument("--resume-series",  type=str, default=None,    help="恢復指定的 series_run_id")
+    parser.add_argument("--text-only",       action="store_true",       help="只跑 Stage 1（文字生成），不生成圖片/音訊/影片")
     parser.add_argument("--arc-only",       action="store_true",       help="Series: 只規劃 arc，不生成影片")
     parser.add_argument("--episodes",       type=str, default=None,    help="Series: 只跑指定集數，如 '1-2' 或 '1,3'")
     return parser.parse_args()
@@ -104,6 +105,7 @@ async def run_solo_mode(args, job: dict = None) -> None:
         details=details,
         fresh=args.fresh,
         cta_enabled=cta_enabled,
+        text_only=args.text_only,
     )
 
     print("\n" + "=" * 50)
@@ -145,10 +147,11 @@ if __name__ == "__main__":
             arc_only=args.arc_only,
             episodes_filter=episodes_filter,
             provider_override=args.provider if args.provider != "gemini" else None,
+            text_only=args.text_only,
         ))
 
     elif mode == "anthology":
-        asyncio.run(run_anthology_mode(job=job))
+        asyncio.run(run_anthology_mode(job=job, text_only=args.text_only))
 
     else:
         asyncio.run(run_solo_mode(args, job))

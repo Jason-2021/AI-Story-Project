@@ -34,6 +34,24 @@ def _load_yaml(file_path: Path) -> dict:
 def _get_image_settings() -> dict:
     return _load_yaml(CONFIG_DIR / "base_config.yaml").get("image_settings", {})
 
+
+def _get_scene_ratios(mode: str, n_scenes: int) -> list:
+    """依 scene_ratio_mode 回傳每個場景的圖片比例列表。"""
+    if mode == "all_16_9":
+        return ["16:9"] * n_scenes
+    if mode == "all_9_16":
+        return ["9:16"] * n_scenes
+    if mode == "all_1_1":
+        return ["1:1"] * n_scenes
+    if mode == "alternate":
+        return ["16:9" if i % 2 == 0 else "9:16" for i in range(n_scenes)]
+    if mode == "wide_first":
+        return ["16:9"] + ["9:16"] * max(0, n_scenes - 1)
+    if mode == "portrait_heavy":
+        pattern = ["9:16", "9:16", "16:9", "9:16", "9:16"]
+        return [pattern[i % len(pattern)] for i in range(n_scenes)]
+    return ["16:9"] * n_scenes  # fallback
+
 # =====================================================================
 # 3. 核心路由器
 # =====================================================================
@@ -54,12 +72,14 @@ async def generate_images_router(
     model_name = image_settings.get("model_name")
     if not model_name:
         raise ValueError("❌ [ImageRouter] base_config.yaml 的 image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
-    aspect_ratio = image_settings.get("aspect_ratio", "9:16")
+    mode = image_settings.get("scene_ratio_mode", "all_16_9")
+    ratios = _get_scene_ratios(mode, len(scenes))
+    print(f"  📐 [ImageRouter] 比例模式: {mode}")
 
     if provider.lower() == "gemini":
         tasks = [
-            _generate_single(scene, output_dir, model_name, aspect_ratio)
-            for scene in scenes
+            _generate_single(scene, output_dir, model_name, ratios[i])
+            for i, scene in enumerate(scenes)
         ]
         return await asyncio.gather(*tasks)
 

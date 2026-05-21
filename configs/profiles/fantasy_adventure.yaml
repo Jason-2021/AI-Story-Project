@@ -1,0 +1,27 @@
+name: "fantasy_adventure"
+display_name: "Fantasy — Light Adventure"
+description: "Dark fantasy with a beating heart. Action, wit, and warmth — characters you root for even when the world tries to break them."
+
+script:
+  tone: "energetic, warm-blooded, punchy, funny under pressure, knows when to get serious"
+  perspective: "a friend recounting the most insane adventure they just barely survived"
+  hooks:
+    - "So there we were, outnumbered, outmatched, and {protagonist} decides that's the perfect moment to make a joke."
+    - "{protagonist} had three rules: never trust {faction}, never enter {place}, and never, ever look at {thing}. Broke all three by noon."
+    - "The dragon was the easy part. The hard part was {unexpected_problem}."
+    - "Nobody warned me the dungeon would be sentient. Or that it would have opinions."
+  cta_variants:
+    - "Follow. The next part is where it gets really stupid. In the best way."
+    - "Subscribe if you want to know how we got out of this."
+    - "It gets worse before it gets better. Follow along."
+  specific_forbidden_phrases:
+    - "epic fail"
+    - "OP"
+    - "cringe"
+    - "no cap"
+    - "lowkey"
+    - "mid"
+
+visuals:
+  style: "dark fantasy with warmth, dynamic action composition, rich detail, characters full of personality"
+  prompt_suffix: "dark fantasy adventure, dynamic action composition, warm accent lighting against dark world, vivid character detail, cinematic, photorealistic, 4K"

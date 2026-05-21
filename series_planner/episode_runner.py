@@ -61,6 +61,7 @@ async def run_episode(
     series_arc: "Optional[SeriesArc]" = None,
     fresh: bool = False,
     cta_enabled: bool = True,
+    text_only: bool = False,
 ) -> str:
     """
     Runs the full 3-stage pipeline for a single video/episode.
@@ -124,8 +125,12 @@ async def run_episode(
 
     print(f"✅ 劇本：{script.title}（{len(script.scenes)} 個場景）")
 
-    if provider == "prompt":
-        print("\n[Prompt mode] System prompt 已印出，跳過圖片/音訊/影片生成。")
+    if provider == "prompt" or text_only:
+        tag = "Prompt mode" if provider == "prompt" else "Text-only mode"
+        print(f"\n[{tag}] 跳過圖片/音訊/影片生成。")
+        if text_only and run_id:
+            print(f"    劇本已儲存：workspace/{run_id}/script.json")
+            print(f"    繼續生成：python main.py --resume {run_id}")
         return run_id or "prompt-test"
 
     # ── Stage 2: Images + Audio (parallel) ───────────────────────────

@@ -30,23 +30,38 @@ tts_settings:
 
 image_settings:
   model_name: "gemini-2.5-flash-image"
-  aspect_ratio: "16:9"
+  # 控制每個場景的圖片生成比例：
+  #   all_16_9      — 全部 16:9（橫式，Ken Burns 水平移動）
+  #   all_9_16      — 全部 9:16（直式，Zoom in/out）
+  #   all_1_1       — 全部 1:1（正方，Ken Burns 輕微水平移動）
+  #   alternate     — 交替 16:9 / 9:16（奇數場景橫式，偶數直式）
+  #   wide_first    — 第 1 場 16:9，其餘 9:16
+  #   portrait_heavy — 9:16, 9:16, 16:9, 9:16, 9:16... 循環
+  scene_ratio_mode: "alternate"
 
 video_renderer:
   canvas_width: 1080
   canvas_height: 1920
   fps: 24
-  ken_burns_strategy: "alternate_lr"   # 可換: all_left_to_right, all_right_to_left
-  zoom_strategy: "alternate"           # 可換: zoom_in, zoom_out
-  zoom_amount: 0.12                    # 可換: 0.10 ~ 0.20，越大鏡頭移動越明顯
-  transition: "hard_cut"              # 可換: fade_black, crossfade
+  ken_burns_strategy: "alternate_lr"    # 可換: all_left_to_right, all_right_to_left
+  ken_burns_v_strategy: "alternate_tb"  # 垂直 Ken Burns（長影音用）可換: all_top_to_bottom, all_bottom_to_top
+  zoom_strategy: "alternate"            # 可換: zoom_in, zoom_out
+  zoom_amount: 0.12                     # 可換: 0.10 ~ 0.20，越大鏡頭移動越明顯
+  transition: "hard_cut"               # 可換: fade_black, crossfade
   caption_words_per_group: 3
   caption_position_y_ratio: 0.65
   caption_font_size: 100
   caption_highlight_color: "#FFD700"
-  caption_uppercase: true             # 可換: false
-  caption_max_width_ratio: 0.90       # 字幕最大寬度為畫布的比例（超過自動換行）
+  caption_uppercase: true              # 可換: false
+  caption_max_width_ratio: 0.90        # 字幕最大寬度為畫布的比例（超過自動換行）
 
-image_generation_rules:
-  strict_no_text: true
-  aspect_ratio: "16:9"
+long_form_renderer:
+  canvas_width: 1920
+  canvas_height: 1080
+  fps: 24
+  ken_burns_strategy: "alternate_lr"
+  ken_burns_v_strategy: "alternate_tb"
+  zoom_strategy: "alternate"
+  zoom_amount: 0.12
+  transition: "fade_black"
+  # 字幕設定繼承自 video_renderer（未在此覆蓋即用 video_renderer 的值）
