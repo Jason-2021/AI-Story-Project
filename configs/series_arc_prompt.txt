@@ -25,6 +25,10 @@ SERIES DESIGN PRINCIPLES
 
 7. CONNECTS_TO_NEXT: Write a specific teaser hint that bridges this episode to the next. For the final episode, this field must be null (JSON null, not the string "null").
 
+8. LOOP ANCHOR: For each episode, derive a loop_anchor — a 4-8 word phrase extracted from the hook_angle. This phrase will be echoed in the episode's loop_scene (the very last short-form scene) to create a seamless loop. Example: hook_angle "This city hides a secret no map has ever shown" → loop_anchor "this city's hidden secret".
+
+9. SERIES BUMPERS: Generate intro_scenes (1-2 scenes) for the long-form series intro — warm welcome, series topic overview, and a preview of what viewers will gain. Generate outro_scenes (1-2 scenes) for the long-form outro — thank viewers warmly, recap the series journey in one sentence, and close with a subscribe/comment CTA. Each bumper scene needs both a narration (spoken text) and an image_prompt.
+
 =========================================
 QUALITY CHECKLIST (verify before output)
 =========================================
@@ -33,3 +37,5 @@ QUALITY CHECKLIST (verify before output)
 - Each episode can be understood without watching others
 - series_payoff is the satisfying conclusion that justifies watching the whole series
 - episode_titles are specific (not generic like "Episode 1: Introduction")
+- Each episode has a unique loop_anchor derived from its hook_angle (4-8 words)
+- intro_scenes and outro_scenes are present (1-2 scenes each, both narration and image_prompt)

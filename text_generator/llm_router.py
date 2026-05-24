@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .gemini_api import generate_with_gemini
+from .openai_api import generate_with_openai
 
 # =====================================================================
 # 1. Schema 定義 (資料合約)
@@ -22,9 +23,13 @@ class VideoScript(BaseModel):
     description: str = Field(description="YouTube video description with hashtags.")
     tags: List[str] = Field(description="List of SEO tags.")
     scenes: List[Scene] = Field(
-        min_length=4,
+        min_length=3,
         max_length=5,
-        description="The ordered list of video scenes.",
+        description="The ordered list of video scenes. In loop mode (series with loop_anchor): content scenes only, NOT including the final loop_scene. Scene 1 must use the hook_angle.",
+    )
+    loop_scene: Optional[Scene] = Field(
+        default=None,
+        description="The final scene for short-form only (scene_id=0). Max 15 words narration. Must end by echoing the loop_anchor phrase so the video seamlessly loops back to Scene 1. NOT included in the scenes array. Null when loop mode is inactive.",
     )
 
 class ScriptRequest(BaseModel):
@@ -35,10 +40,6 @@ class ScriptRequest(BaseModel):
     episode_context: Optional[dict] = Field(
         default=None,
         description="Series mode only: episode outline + arc metadata for system prompt injection."
-    )
-    cta_enabled: bool = Field(
-        default=True,
-        description="若為 False，結尾不加 CTA，以自然收尾取代。"
     )
 
 # =====================================================================
@@ -92,7 +93,7 @@ def _scene_composition_guide(ratio_mode: str, n_scenes: int) -> str:
         lines.append(f"  Scene {i}: {ratio} → {rule}")
     return "\n".join(lines)
 
-def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = None, cta_enabled: bool = True) -> str:
+def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = None) -> str:
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
     profile_config = _load_yaml(CONFIG_DIR / "profiles" / f"{profile_name}.yaml")
     template = _read_text_file(CONFIG_DIR / "system_prompt.txt")
@@ -102,12 +103,14 @@ def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = No
     merged_forbidden = global_forbidden + specific_forbidden
 
     hooks = profile_config.get("script", {}).get("hooks", [])
-    ctas = profile_config.get("script", {}).get("cta_variants", [])
 
     series_context = _build_series_context(episode_context) if episode_context else ""
 
-    if cta_enabled:
-        cta_rule = f"End with a strong hook for engagement, such as: {' or '.join(ctas) if ctas else 'a compelling question or takeaway'}."
+    if episode_context and episode_context.get("loop_anchor"):
+        cta_rule = (
+            "The final content scene ends with the key reveal as a definitive statement — "
+            "no question, no CTA, no cliffhanger. The loop_scene (generated separately) is the true closing."
+        )
     else:
         cta_rule = "End naturally with the episode's key takeaway. No follow requests, subscribe prompts, or references to future episodes."
 
@@ -136,11 +139,25 @@ def _build_series_context(ctx: dict) -> str:
         if prev else "nothing yet — this is the first episode"
     )
     connects = ctx.get("connects_to_next")
-    cta_hint = (
+    narrative_bridge = (
         f"Tease the next episode with this bridge: {connects}"
         if connects
         else f"Final episode — end with the series payoff: {ctx.get('series_payoff', '')}"
     )
+    loop_anchor = ctx.get("loop_anchor", "")
+    if loop_anchor:
+        n_scenes = _load_yaml(CONFIG_DIR / "base_config.yaml").get("video_settings", {}).get("max_scenes", 5)
+        n_content = n_scenes - 1
+        loop_rule = (
+            f"\n- LOOP STRUCTURE: Generate exactly {n_content} content scenes in the `scenes` array. "
+            f"Scene {n_content} MUST end with the key reveal as a definitive statement (no question, no CTA). "
+            f"Also generate a separate `loop_scene` field (scene_id=0, max 15 words) whose final sentence "
+            f"echoes: \"{loop_anchor}\". "
+            "loop_scene is NOT part of scenes — it is appended for short-form only and SKIPPED in long-form."
+        )
+    else:
+        loop_rule = ""
+
     return (
         "\n=========================================\n"
         "📺 SERIES CONTEXT\n"
@@ -149,13 +166,13 @@ def _build_series_context(ctx: dict) -> str:
         f"This episode's focus: {ctx['focus']}\n"
         f"Key reveal for this episode: {ctx['key_reveal']}\n"
         f"Hook angle — you MUST open with this specific angle: {ctx['hook_angle']}\n"
-        f"CTA guidance: {cta_hint}\n"
+        f"Narrative bridge: {narrative_bridge}\n"
         f"Previously covered in this series: {prev_str}\n"
         "\nSERIES SCRIPTWRITING RULES:\n"
         "- The opening hook MUST use the hook angle specified above.\n"
         "- Do NOT recap previous episodes — one brief sentence of context max.\n"
         "- This episode must stand alone for a first-time viewer.\n"
-        "- The CTA must reference the series (next episode or the whole series).\n"
+        f"{loop_rule}"
     )
 
 
@@ -168,8 +185,10 @@ def _build_user_prompt(topic: str, details: str, ratio_mode: str = "all_16_9", n
     prompt += f"\n{_scene_composition_guide(ratio_mode, n_scenes)}\n"
     return prompt
 
-def _get_llm_settings() -> dict:
+def _get_llm_settings(provider: str = "gemini") -> dict:
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
+    if provider == "openai":
+        return base_config.get("openai_llm_settings", {"model_name": "gpt-4o", "temperature": 0.7})
     return base_config.get("llm_settings", {})
 
 # =====================================================================
@@ -188,14 +207,14 @@ async def generate_script_router(request: ScriptRequest) -> VideoScript:
     ratio_mode = base_cfg.get("image_settings", {}).get("scene_ratio_mode", "all_16_9")
     n_scenes = base_cfg.get("video_settings", {}).get("max_scenes", 5)
 
-    system_msg = _build_system_prompt(request.profile_name, request.episode_context, request.cta_enabled)
+    system_msg = _build_system_prompt(request.profile_name, request.episode_context)
     user_msg = _build_user_prompt(request.topic, request.details, ratio_mode, n_scenes)
 
-    llm_settings = _get_llm_settings()
-    model_name = llm_settings.get("model_name", "gemini-2.5-flash")
+    provider = request.provider.lower()
+    llm_settings = _get_llm_settings(provider)
+    model_name = llm_settings.get("model_name", "gpt-4o" if provider == "openai" else "gemini-2.5-flash")
     temperature = llm_settings.get("temperature", 0.7)
 
-    provider = request.provider.lower()
     print(f"📡 [Router] 任務交接給代工廠 -> {provider}.py ...")
 
     if provider == "gemini":
@@ -207,9 +226,12 @@ async def generate_script_router(request: ScriptRequest) -> VideoScript:
         )
 
     elif provider == "openai":
-        # 開發階段的 Mock 回傳
-        print("✅ [OpenAI API Mock] 成功生成並解析 JSON")
-        return VideoScript(title="OpenAI Test", description="Test", tags=[], scenes=[])
+        return await generate_with_openai(
+            system_msg, user_msg,
+            response_schema=VideoScript,
+            model_name=model_name,
+            temperature=temperature,
+        )
 
     elif provider == "prompt":
         print(system_msg)

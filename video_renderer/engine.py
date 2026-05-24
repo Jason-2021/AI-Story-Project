@@ -6,6 +6,7 @@ render_video()     — 短影音（9:16），讀 video_renderer 設定
 render_longform()  — 長影音（16:9），讀 long_form_renderer 設定，重新渲染每集
 """
 import json
+import subprocess
 import yaml
 from pathlib import Path
 from typing import List
@@ -160,10 +161,12 @@ def _build_scene_clip(
 # 短影音渲染
 # =====================================================================
 
-def render_video(run_id: str) -> Path:
+def render_video(run_id: str, workspace_override: Path = None) -> Path:
     """
     從 workspace/{run_id} 讀取所有素材，輸出 MP4 至 workspace/{run_id}/video/output.mp4。
     使用 video_renderer 設定（預設 9:16 畫布）。
+
+    workspace_override: 若指定，以此為 workspace 根目錄（供測試腳本使用）。
     """
     from core import state_manager
     from text_generator.llm_router import VideoScript
@@ -171,12 +174,13 @@ def render_video(run_id: str) -> Path:
     settings = _get_settings("video_renderer")
     transition_name = settings.get("transition", "hard_cut")
 
-    workspace_dir = state_manager.WORKSPACE_DIR / run_id
+    base = workspace_override if workspace_override is not None else state_manager.WORKSPACE_DIR
+    ep_dir = base / run_id
     script = VideoScript.model_validate_json(
-        (workspace_dir / "script.json").read_text(encoding="utf-8")
+        (ep_dir / "script.json").read_text(encoding="utf-8")
     )
     raw_audio = json.loads(
-        (workspace_dir / "audio" / "audio_results.json").read_text(encoding="utf-8")
+        (ep_dir / "audio" / "audio_results.json").read_text(encoding="utf-8")
     )
     audio_by_scene = {item["scene_id"]: item for item in raw_audio}
 
@@ -185,7 +189,7 @@ def render_video(run_id: str) -> Path:
     clips = []
     for i, scene in enumerate(script.scenes):
         sid = scene.scene_id
-        image_path = workspace_dir / "images" / f"scene_{sid:02d}.png"
+        image_path = ep_dir / "images" / f"scene_{sid:02d}.png"
         audio_data = audio_by_scene[sid]
         audio_path = Path(audio_data["file_path"])
         timestamps = [
@@ -195,6 +199,19 @@ def render_video(run_id: str) -> Path:
         print(f"  🖼️  [Scene {sid}] 建立 clip...")
         clips.append(_build_scene_clip(i, image_path, audio_path, timestamps, settings))
 
+    # loop_scene 附加在最後（短影音專用，長影音跳過）
+    if script.loop_scene and 0 in audio_by_scene:
+        sid = 0
+        image_path = ep_dir / "images" / f"scene_{sid:02d}.png"
+        audio_data = audio_by_scene[sid]
+        audio_path = Path(audio_data["file_path"])
+        timestamps = [
+            type("W", (), {"word": w["word"], "start": w["start"], "end": w["end"]})()
+            for w in audio_data["timestamps"]
+        ]
+        print(f"  🔁 [Loop Scene] 建立 loop clip...")
+        clips.append(_build_scene_clip(len(clips), image_path, audio_path, timestamps, settings))
+
     if transition_name in TRANSITION_REGISTRY:
         clips = TRANSITION_REGISTRY[transition_name](clips)
     else:
@@ -202,7 +219,8 @@ def render_video(run_id: str) -> Path:
 
     final_clip = concatenate_videoclips(clips, method="compose")
 
-    video_dir = state_manager.get_video_dir(run_id)
+    video_dir = ep_dir / "video"
+    video_dir.mkdir(parents=True, exist_ok=True)
     output_path = video_dir / "output.mp4"
     temp_audio  = video_dir / "temp_audio.m4a"
 
@@ -234,13 +252,16 @@ def render_longform(
     series_id: str,
     ep_run_ids: List[str],
     add_title_cards: bool = True,
+    workspace_override: Path = None,
 ) -> Path:
     """
     重新讀取每集的 images/ + audio/ 資料夾，用 16:9 畫布渲染後合併為長影片。
     效果由每張圖片的實際比例 vs 畫布比例自動決定（ratio-aware）。
     使用 long_form_renderer 設定（覆蓋自 video_renderer）。
+
+    workspace_override: 若指定，以此為 workspace 根目錄（供測試腳本使用）。
     """
-    from core import series_state_manager, state_manager
+    from core import state_manager
     from text_generator.llm_router import VideoScript
 
     settings = _get_settings("long_form_renderer")
@@ -248,8 +269,10 @@ def render_longform(
     canvas_h = settings.get("canvas_height", 1080)
     transition_name = settings.get("transition", "fade_black")
 
-    arc_data = series_state_manager.load_series_arc_json(series_id)
-    series_dir = series_state_manager.get_series_dir(series_id)
+    base = workspace_override if workspace_override is not None else state_manager.WORKSPACE_DIR
+    series_dir = base / series_id
+    arc_json_path = series_dir / "series_arc.json"
+    arc_data = json.loads(arc_json_path.read_text(encoding="utf-8")) if arc_json_path.exists() else None
     output_dir = series_dir / "long_form"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "output.mp4"
@@ -260,8 +283,24 @@ def render_longform(
     all_clips = []
     global_scene_idx = 0
 
+    # 長影音總開頭（intro bumper）
+    intro_dir = series_dir / "intro"
+    if intro_dir.exists() and (intro_dir / "audio_results.json").exists():
+        print(f"  🎬 [LongForm] 載入 Intro 片段...")
+        intro_audio_raw = json.loads((intro_dir / "audio_results.json").read_text(encoding="utf-8"))
+        intro_audio_by_scene = {item["scene_id"]: item for item in intro_audio_raw}
+        for s_idx, audio_item in sorted(intro_audio_by_scene.items()):
+            img_path = intro_dir / f"scene_{s_idx:02d}.png"
+            aud_path = Path(audio_item["file_path"])
+            timestamps = [
+                type("W", (), {"word": w["word"], "start": w["start"], "end": w["end"]})()
+                for w in audio_item["timestamps"]
+            ]
+            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings))
+            global_scene_idx += 1
+
     for i, ep_run_id in enumerate(ep_run_ids):
-        workspace_dir = state_manager.WORKSPACE_DIR / ep_run_id
+        workspace_dir = base / ep_run_id
 
         script = VideoScript.model_validate_json(
             (workspace_dir / "script.json").read_text(encoding="utf-8")
@@ -291,6 +330,22 @@ def render_longform(
 
         print(f"  ✅ [LongForm] Episode {i + 1} ({len(script.scenes)} 場景) 已建立")
 
+    # 長影音總結尾（outro bumper）
+    outro_dir = series_dir / "outro"
+    if outro_dir.exists() and (outro_dir / "audio_results.json").exists():
+        print(f"  🎬 [LongForm] 載入 Outro 片段...")
+        outro_audio_raw = json.loads((outro_dir / "audio_results.json").read_text(encoding="utf-8"))
+        outro_audio_by_scene = {item["scene_id"]: item for item in outro_audio_raw}
+        for s_idx, audio_item in sorted(outro_audio_by_scene.items()):
+            img_path = outro_dir / f"scene_{s_idx:02d}.png"
+            aud_path = Path(audio_item["file_path"])
+            timestamps = [
+                type("W", (), {"word": w["word"], "start": w["start"], "end": w["end"]})()
+                for w in audio_item["timestamps"]
+            ]
+            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings))
+            global_scene_idx += 1
+
     if transition_name in TRANSITION_REGISTRY:
         all_clips = TRANSITION_REGISTRY[transition_name](all_clips)
 
@@ -314,6 +369,38 @@ def render_longform(
 
     print(f"✅ [LongForm] 長影片完成：{output_path}")
     return output_path
+
+
+# =====================================================================
+# BGM 後製混音
+# =====================================================================
+
+def mix_bgm(video_path: Path, bgm_cfg: dict) -> Path:
+    """
+    FFmpeg 後製：讀 output.mp4，輸出 output_bgm.mp4（同資料夾）。
+    套用 EQ 頻率挖掉（為人聲讓路）+ 音量調整，影像軌直接 copy 不重新編碼。
+    """
+    bgm_path = Path(bgm_cfg["path"])
+    volume   = bgm_cfg.get("volume", 0.12)
+    eq_freq  = bgm_cfg.get("eq_freq", 2000)
+    eq_gain  = bgm_cfg.get("eq_gain_db", -4)
+    eq_width = bgm_cfg.get("eq_width_octaves", 2)
+    out_bgm  = video_path.with_stem(video_path.stem + "_bgm")
+
+    eq_filter      = f"equalizer=f={eq_freq}:width_type=o:width={eq_width}:g={eq_gain}"
+    filter_complex = (
+        f"[1:a]{eq_filter},volume={volume}[bgm];"
+        "[0:a][bgm]amix=inputs=2:duration=first[aout]"
+    )
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", str(video_path),
+        "-stream_loop", "-1", "-i", str(bgm_path),
+        "-filter_complex", filter_complex,
+        "-map", "0:v", "-map", "[aout]",
+        "-c:v", "copy", str(out_bgm),
+    ], check=True, capture_output=True)
+    return out_bgm
 
 
 # =====================================================================

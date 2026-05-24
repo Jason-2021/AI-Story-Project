@@ -21,11 +21,10 @@ def create_run(topic: str, profile_name: str) -> str:
         "topic": topic,
         "profile_name": profile_name,
         "stages": {
-            "text":    "pending",
-            "images":  "pending",
-            "audio":   "pending",
-            "video":   "pending",
-            "publish": "pending",
+            "text":   "pending",
+            "images": "pending",
+            "audio":  "pending",
+            "video":  "pending",
         },
     })
     _LATEST_RUN_FILE.write_text(run_id, encoding="utf-8")

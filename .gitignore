@@ -3,6 +3,8 @@ narration/
 for_llm/
 workspace/
 jobs/
+assets/bgm/*.mp3
+assets/bgm/*.wav
 
 # Claude Code (tool-specific, machine-local)
 .claude/

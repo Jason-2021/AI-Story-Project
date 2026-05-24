@@ -51,6 +51,7 @@ def _parse_args():
     parser.add_argument("--resume-series",  type=str, default=None,    help="恢復指定的 series_run_id")
     parser.add_argument("--text-only",       action="store_true",       help="只跑 Stage 1（文字生成），不生成圖片/音訊/影片")
     parser.add_argument("--arc-only",       action="store_true",       help="Series: 只規劃 arc，不生成影片")
+    parser.add_argument("--bgm-only",       action="store_true",       help="只對已渲染的影片補加 BGM，不重跑 pipeline")
     parser.add_argument("--episodes",       type=str, default=None,    help="Series: 只跑指定集數，如 '1-2' 或 '1,3'")
     return parser.parse_args()
 
@@ -75,8 +76,6 @@ async def run_solo_mode(args, job: dict = None) -> None:
     details = args.details
     profile = args.profile
     provider = args.provider
-    cta_enabled = (job or {}).get("cta_enabled", True)
-
     # Determine run_id
     if args.resume:
         run_id = args.resume
@@ -104,7 +103,6 @@ async def run_solo_mode(args, job: dict = None) -> None:
         provider=provider,
         details=details,
         fresh=args.fresh,
-        cta_enabled=cta_enabled,
         text_only=args.text_only,
     )
 
@@ -137,6 +135,16 @@ if __name__ == "__main__":
         if args.profile == "general":   args.profile  = job.get("profile", "general")
         if args.provider == "gemini":   args.provider = job.get("provider", "gemini")
 
+    if args.bgm_only:
+        from core import series_state_manager
+        from series_planner.series_runner import run_bgm_only
+        series_id = args.resume_series or series_state_manager.get_latest_series_id()
+        if not series_id:
+            print("❌ 請提供 --resume-series <series_id> 或確認有已完成的 series")
+            raise SystemExit(1)
+        run_bgm_only(series_id)
+        raise SystemExit(0)
+
     mode = (job.get("mode", "solo") if job else "solo").lower()
 
     if mode == "series":
@@ -148,6 +156,7 @@ if __name__ == "__main__":
             episodes_filter=episodes_filter,
             provider_override=args.provider if args.provider != "gemini" else None,
             text_only=args.text_only,
+            fresh=args.fresh,
         ))
 
     elif mode == "anthology":

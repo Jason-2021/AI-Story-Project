@@ -33,11 +33,10 @@ def create_series(topic: str, profile_name: str, n_episodes: int) -> str:
             "topic": topic,
             "profile_name": profile_name,
             "stages": {
-                "text":    "pending",
-                "images":  "pending",
-                "audio":   "pending",
-                "video":   "pending",
-                "publish": "pending",
+                "text":   "pending",
+                "images": "pending",
+                "audio":  "pending",
+                "video":  "pending",
             },
         })
         episodes[ep_key] = "pending"

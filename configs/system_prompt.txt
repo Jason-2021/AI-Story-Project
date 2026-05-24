@@ -17,6 +17,9 @@ You must strictly output a JSON object matching the provided schema. Do not outp
 1. The Opening (Scene 1): Must grab attention instantly. Use one of these hook styles if appropriate: {profile_hooks}.
 2. The Body: Distribute the narrative across {base_max_scenes} logical scenes following this structure: {script_structure}. Keep sentences punchy.
 3. The Closing (Final Scene): {cta_rule}
+   NOTE — loop_scene (series mode only): If the series context includes a LOOP STRUCTURE instruction,
+   you MUST also generate a `loop_scene` field (scene_id=0, narration ≤ 15 words) that echoes the loop_anchor.
+   The `scenes` array contains only the specified number of content scenes — no CTA scene.
 {series_context}
 =========================================
 🖼️ IMAGE GENERATION RULES

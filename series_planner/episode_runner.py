@@ -26,7 +26,11 @@ if TYPE_CHECKING:
 async def _run_image_stage(run_id: str, script: VideoScript) -> None:
     image_dir = state_manager.get_image_dir(run_id)
     state_manager.mark_stage(run_id, "images", "in_progress")
-    results = await generate_images_router(script.scenes, output_dir=image_dir)
+    all_scenes = list(script.scenes)
+    if script.loop_scene:
+        script.loop_scene.scene_id = 0
+        all_scenes = [script.loop_scene] + all_scenes
+    results = await generate_images_router(all_scenes, output_dir=image_dir)
     (image_dir / "image_results.json").write_text(
         json.dumps([r.model_dump() for r in results], ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -38,7 +42,11 @@ async def _run_image_stage(run_id: str, script: VideoScript) -> None:
 async def _run_audio_stage(run_id: str, script: VideoScript) -> None:
     audio_dir = state_manager.get_audio_dir(run_id)
     state_manager.mark_stage(run_id, "audio", "in_progress")
-    results = await generate_audio_router(script.scenes, output_dir=audio_dir)
+    all_scenes = list(script.scenes)
+    if script.loop_scene:
+        script.loop_scene.scene_id = 0
+        all_scenes = [script.loop_scene] + all_scenes
+    results = await generate_audio_router(all_scenes, output_dir=audio_dir)
     (audio_dir / "audio_results.json").write_text(
         json.dumps([r.model_dump() for r in results], ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -60,7 +68,6 @@ async def run_episode(
     episode_outline: "Optional[EpisodeOutline]" = None,
     series_arc: "Optional[SeriesArc]" = None,
     fresh: bool = False,
-    cta_enabled: bool = True,
     text_only: bool = False,
 ) -> str:
     """
@@ -85,6 +92,7 @@ async def run_episode(
             "focus":             episode_outline.focus,
             "key_reveal":        episode_outline.key_reveal,
             "hook_angle":        episode_outline.hook_angle,
+            "loop_anchor":       episode_outline.loop_anchor,
             "connects_to_next":  episode_outline.connects_to_next,
             "series_title":      series_arc.series_title,
             "total_episodes":    series_arc.total_episodes,
@@ -113,7 +121,6 @@ async def run_episode(
             profile_name=profile,
             provider=provider,
             episode_context=episode_context,
-            cta_enabled=cta_enabled,
         )
         script = await generate_script_router(request)
 

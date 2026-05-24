@@ -10,6 +10,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from text_generator.gemini_api import generate_with_gemini
+from text_generator.openai_api import generate_with_openai
 
 CONFIG_DIR = Path(__file__).parent.parent / "configs"
 
@@ -26,10 +27,19 @@ class EpisodeOutline(BaseModel):
     hook_angle: str = Field(
         description="A unique, specific hook angle for this episode. Must differ in both content and rhetorical style from all other episodes."
     )
+    loop_anchor: Optional[str] = Field(
+        default=None,
+        description="A 4-8 word phrase distilled from hook_angle. The episode's loop_scene must echo this phrase to create a seamless short-form loop. E.g. hook_angle 'This city hides a secret no map shows' → loop_anchor 'this city's hidden secret'."
+    )
     connects_to_next: Optional[str] = Field(
         default=None,
         description="A teaser hint bridging to the next episode. Null for the final episode."
     )
+
+
+class BumperScene(BaseModel):
+    narration: str = Field(description="Spoken narration text for this intro/outro scene.")
+    image_prompt: str = Field(description="Image generation prompt for this intro/outro scene.")
 
 
 class SeriesArc(BaseModel):
@@ -38,6 +48,14 @@ class SeriesArc(BaseModel):
     overall_theme: str = Field(description="The big-picture narrative arc of the entire series.")
     episodes: List[EpisodeOutline] = Field(description="Ordered list of episode outlines, one per episode.")
     series_payoff: str = Field(description="What the whole series builds toward — the ultimate takeaway for viewers who watch all episodes.")
+    intro_scenes: Optional[List[BumperScene]] = Field(
+        default=None,
+        description="1-2 scenes for the long-form series intro. Warm welcome, topic overview, preview of what viewers will learn across all episodes.",
+    )
+    outro_scenes: Optional[List[BumperScene]] = Field(
+        default=None,
+        description="1-2 scenes for the long-form series outro. Thank viewers, recap the journey, end with a subscribe/comment CTA.",
+    )
 
 
 # =====================================================================
@@ -87,17 +105,26 @@ async def plan_series_arc(
     print(f"\n🗺️  [ArcPlanner] 規劃 {n_episodes} 集系列弧度 | 主題: {topic[:50]}")
 
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
-    model_name = base_config.get("llm_settings", {}).get("model_name", "gemini-2.5-flash")
-
     system_msg = _build_arc_system_prompt(profile_name, n_episodes)
     user_msg = _build_arc_user_prompt(topic, arc_details, n_episodes)
 
     if provider.lower() == "gemini":
+        model_name = base_config.get("llm_settings", {}).get("model_name", "gemini-2.5-flash")
+        temperature = base_config.get("llm_settings", {}).get("temperature", 0.8)
         arc = await generate_with_gemini(
             system_msg, user_msg,
             response_schema=SeriesArc,
             model_name=model_name,
-            temperature=0.8,
+            temperature=temperature,
+        )
+    elif provider.lower() == "openai":
+        model_name = base_config.get("openai_llm_settings", {}).get("model_name", "gpt-4o")
+        temperature = base_config.get("openai_llm_settings", {}).get("temperature", 0.8)
+        arc = await generate_with_openai(
+            system_msg, user_msg,
+            response_schema=SeriesArc,
+            model_name=model_name,
+            temperature=temperature,
         )
     elif provider.lower() == "prompt":
         print(system_msg)
@@ -113,6 +140,7 @@ async def plan_series_arc(
                     focus=f"Mock focus for episode {i}",
                     key_reveal=f"Mock key reveal for episode {i}",
                     hook_angle=f"Mock hook angle {i}",
+                    loop_anchor=f"mock loop anchor episode {i}",
                     connects_to_next=None if i == n_episodes else f"Mock bridge to episode {i + 1}",
                 )
                 for i in range(1, n_episodes + 1)
