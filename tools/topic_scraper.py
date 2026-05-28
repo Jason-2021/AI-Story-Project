@@ -177,12 +177,16 @@ class RedditScraper(BaseScraper):
         self.description = f"Reddit r/{subreddit} - top posts all time (score >= {self.MIN_SCORE})"
 
     def fetch_batch(self, n: int, **kwargs) -> list[dict]:
+        recent: bool = kwargs.get("recent", False)
         results: list[dict] = []
         after: Optional[str] = None
         seen: set[str] = set()
 
-        # Scrape top/all first, then top/year for more unique posts
-        for time_filter in ("all", "year"):
+        # recent=True: only fetch top/month (new content since last week-month)
+        # recent=False: fetch top/all then top/year for maximum coverage
+        time_filters = ("month",) if recent else ("all", "year")
+
+        for time_filter in time_filters:
             after = None
             while len(results) < n:
                 params = {"limit": 100, "t": time_filter, "raw_json": 1}
@@ -329,44 +333,64 @@ class WikiDYKScraper(BaseScraper):
                 "Install with: pip install beautifulsoup4"
             )
 
+        recent: bool = kwargs.get("recent", False)
         results: list[dict] = []
-        current_year = date.today().year
+        today = date.today()
+        current_year = today.year
+        current_month_idx = today.month - 1  # 0-based index into _MONTHS
 
-        for year in range(current_year, 2003, -1):
-            for month in reversed(self._MONTHS):
+        # recent=True: only last 2 months (skip the rest entirely, no HTTP requests)
+        # recent=False: full archive from current year back to 2003
+        if recent:
+            # Generate (year, month_name) for the last 2 calendar months
+            month_pairs = []
+            for delta in range(2):
+                m = current_month_idx - delta
+                y = current_year
+                if m < 0:
+                    m += 12
+                    y -= 1
+                month_pairs.append((y, self._MONTHS[m]))
+        else:
+            month_pairs = [
+                (y, m)
+                for y in range(current_year, 2003, -1)
+                for m in reversed(self._MONTHS)
+            ]
+
+        for year, month in month_pairs:
+            if len(results) >= n:
+                break
+            url = f"https://en.wikipedia.org/wiki/Wikipedia:Recent_additions/{year}/{month}"
+            try:
+                r = requests.get(
+                    url,
+                    headers={"User-Agent": "AI-Story-Project/1.0"},
+                    timeout=15
+                )
+                if r.status_code == 404:
+                    continue
+                r.raise_for_status()
+            except Exception as e:
+                print(f"  [WARN] Wiki DYK {year}/{month}: {e}")
+                time.sleep(1)
+                continue
+
+            soup = BeautifulSoup(r.text, "html.parser")
+            for li in soup.find_all("li"):
+                text = li.get_text(separator=" ", strip=True)
+                if "... that" in text.lower() or text.startswith("..."):
+                    clean = text.replace("... that", "Did you know that").strip()
+                    if len(clean) > 30:
+                        results.append({
+                            "title": clean[:300],
+                            "description": "",
+                            "source_url": "",  # empty: dedup by title (each DYK fact is unique text)
+                            "source_score": None,
+                        })
                 if len(results) >= n:
                     break
-                url = f"https://en.wikipedia.org/wiki/Wikipedia:Recent_additions/{year}/{month}"
-                try:
-                    r = requests.get(
-                        url,
-                        headers={"User-Agent": "AI-Story-Project/1.0"},
-                        timeout=15
-                    )
-                    if r.status_code == 404:
-                        continue
-                    r.raise_for_status()
-                except Exception as e:
-                    print(f"  [WARN] Wiki DYK {year}/{month}: {e}")
-                    time.sleep(1)
-                    continue
-
-                soup = BeautifulSoup(r.text, "html.parser")
-                # DYK entries are typically in <li> tags starting with "... that"
-                for li in soup.find_all("li"):
-                    text = li.get_text(separator=" ", strip=True)
-                    if "... that" in text.lower() or text.startswith("..."):
-                        clean = text.replace("... that", "Did you know that").strip()
-                        if len(clean) > 30:
-                            results.append({
-                                "title": clean[:300],
-                                "description": "",
-                                "source_url": url,
-                                "source_score": None,
-                            })
-                    if len(results) >= n:
-                        break
-                time.sleep(0.5)
+            time.sleep(0.5)
 
         if not results:
             raise SourceExhaustedException("wiki:dyk: no entries fetched (beautifulsoup4 required)")
@@ -448,19 +472,23 @@ def run_scraper(
     dry_run: bool = False,
     date_arg: Optional[str] = None,
     date_range: Optional[str] = None,
+    recent: bool = False,
 ) -> None:
     scraper = SCRAPER_REGISTRY.get(source_key)
     if not scraper:
         print(f"[ERROR] Unknown source: '{source_key}'. Run --list-sources to see options.")
         return
 
-    print(f"\n[Scraper] [{source_key}] target: {n}  {'(dry-run)' if dry_run else ''}")
+    recent_note = " (recent mode)" if recent else ""
+    print(f"\n[Scraper] [{source_key}] target: {n}  {'(dry-run)' if dry_run else ''}{recent_note}")
 
     kwargs = {}
     if date_arg:
         kwargs["date"] = date_arg
     if date_range:
         kwargs["date_range"] = date_range
+    if recent:
+        kwargs["recent"] = True
 
     try:
         raw = scraper.fetch_batch(n, **kwargs)
@@ -537,6 +565,10 @@ def main() -> None:
                         help="Print all available sources and exit")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print what would be scraped without writing to DB")
+    parser.add_argument("--recent", action="store_true",
+                        help="Supplement mode: only fetch new/recent content "
+                             "(Reddit: top/month; wiki:dyk: last 2 months). "
+                             "Avoids re-scraping the full archive when topping up the bank.")
 
     args = parser.parse_args()
 
@@ -552,11 +584,13 @@ def main() -> None:
         for key in SCRAPER_REGISTRY:
             run_scraper(key, args.n, dry_run=args.dry_run,
                         date_arg=args.date or None,
-                        date_range=args.date_range or None)
+                        date_range=args.date_range or None,
+                        recent=args.recent)
     else:
         run_scraper(args.source, args.n, dry_run=args.dry_run,
                     date_arg=args.date or None,
-                    date_range=args.date_range or None)
+                    date_range=args.date_range or None,
+                    recent=args.recent)
 
 
 if __name__ == "__main__":
