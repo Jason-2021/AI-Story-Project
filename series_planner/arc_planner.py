@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from text_generator.gemini_api import generate_with_gemini
-from text_generator.openai_api import generate_with_openai
+from text_generator.llm_router import call_llm, get_llm_settings
 
 CONFIG_DIR = Path(__file__).parent.parent / "configs"
 
@@ -46,6 +45,10 @@ class SeriesArc(BaseModel):
     series_title: str = Field(description="The overall series title.")
     total_episodes: int = Field(description="Total number of episodes in the series.")
     overall_theme: str = Field(description="The big-picture narrative arc of the entire series.")
+    series_lens: Optional[str] = Field(
+        default=None,
+        description="One sentence capturing the central insight that ALL episodes illustrate with different evidence. Defines the unifying perspective of the series."
+    )
     episodes: List[EpisodeOutline] = Field(description="Ordered list of episode outlines, one per episode.")
     series_payoff: str = Field(description="What the whole series builds toward — the ultimate takeaway for viewers who watch all episodes.")
     intro_scenes: Optional[List[BumperScene]] = Field(
@@ -55,6 +58,14 @@ class SeriesArc(BaseModel):
     outro_scenes: Optional[List[BumperScene]] = Field(
         default=None,
         description="1-2 scenes for the long-form series outro. Thank viewers, recap the journey, end with a subscribe/comment CTA.",
+    )
+
+
+class AnthologyPlan(BaseModel):
+    title: str = Field(description="The anthology title or theme.")
+    total_episodes: int = Field(description="Total number of episodes.")
+    episodes: List[EpisodeOutline] = Field(
+        description="Ordered list of episode outlines. connects_to_next must be null for all episodes."
     )
 
 
@@ -91,6 +102,27 @@ def _build_arc_user_prompt(topic: str, arc_details: str, n_episodes: int) -> str
     return prompt
 
 
+def _build_anthology_system_prompt(profile_name: str, n_topics: int) -> str:
+    template_path = CONFIG_DIR / "anthology_topics_prompt.txt"
+    if not template_path.exists():
+        raise FileNotFoundError(f"[ArcPlanner] 找不到 anthology_topics_prompt.txt: {template_path}")
+    template = template_path.read_text(encoding="utf-8")
+    profile_config = _load_yaml(CONFIG_DIR / "profiles" / f"{profile_name}.yaml")
+    return template.format(
+        n_topics=n_topics,
+        profile_name=profile_config.get("display_name", profile_name),
+        profile_tone=profile_config.get("script", {}).get("tone", "engaging, informative"),
+    )
+
+
+def _build_anthology_user_prompt(title: str, arc_details: str, n_topics: int) -> str:
+    prompt = f"Series Title / Theme: {title}\n"
+    prompt += f"Number of Topics: {n_topics}\n"
+    if arc_details and arc_details.strip():
+        prompt += f"Context / Focus Notes: {arc_details}\n"
+    return prompt
+
+
 # =====================================================================
 # Main Entry
 # =====================================================================
@@ -104,32 +136,20 @@ async def plan_series_arc(
 ) -> SeriesArc:
     print(f"\n🗺️  [ArcPlanner] 規劃 {n_episodes} 集系列弧度 | 主題: {topic[:50]}")
 
-    base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
     system_msg = _build_arc_system_prompt(profile_name, n_episodes)
     user_msg = _build_arc_user_prompt(topic, arc_details, n_episodes)
 
-    if provider.lower() == "gemini":
-        model_name = base_config.get("llm_settings", {}).get("model_name", "gemini-2.5-flash")
-        temperature = base_config.get("llm_settings", {}).get("temperature", 0.8)
-        arc = await generate_with_gemini(
-            system_msg, user_msg,
-            response_schema=SeriesArc,
-            model_name=model_name,
-            temperature=temperature,
-        )
-    elif provider.lower() == "openai":
-        model_name = base_config.get("openai_llm_settings", {}).get("model_name", "gpt-4o")
-        temperature = base_config.get("openai_llm_settings", {}).get("temperature", 0.8)
-        arc = await generate_with_openai(
-            system_msg, user_msg,
-            response_schema=SeriesArc,
-            model_name=model_name,
-            temperature=temperature,
-        )
-    elif provider.lower() == "prompt":
-        print(system_msg)
-        print(user_msg)
-        arc = SeriesArc(
+    llm_cfg = get_llm_settings(provider)
+    model_name  = llm_cfg.get("model_name", "gemini-2.5-flash")
+    temperature = llm_cfg.get("temperature", 0.8)
+
+    arc = await call_llm(
+        system_msg, user_msg,
+        response_schema=SeriesArc,
+        provider=provider,
+        model_name=model_name,
+        temperature=temperature,
+        mock_factory=lambda: SeriesArc(
             series_title=f"[MOCK] {topic}",
             total_episodes=n_episodes,
             overall_theme="Mock arc for prompt-mode testing.",
@@ -146,9 +166,8 @@ async def plan_series_arc(
                 for i in range(1, n_episodes + 1)
             ],
             series_payoff="Mock series payoff.",
-        )
-    else:
-        raise ValueError(f"[ArcPlanner] 不支援的 provider: '{provider}'")
+        ),
+    )
 
     if len(arc.episodes) != n_episodes:
         raise ValueError(
@@ -164,3 +183,55 @@ async def plan_series_arc(
         print(f"   Ep{ep.episode_number}: {ep.episode_title}")
 
     return arc
+
+
+async def generate_anthology_plan(
+    title: str,
+    arc_details: str,
+    profile_name: str,
+    n_topics: int,
+    provider: str = "gemini",
+) -> AnthologyPlan:
+    print(f"\n📋 [ArcPlanner] 規劃 {n_topics} 集獨立主題 | 標題: {title[:50]}")
+
+    system_msg = _build_anthology_system_prompt(profile_name, n_topics)
+    user_msg = _build_anthology_user_prompt(title, arc_details, n_topics)
+
+    llm_cfg = get_llm_settings(provider)
+    model_name  = llm_cfg.get("model_name", "gemini-2.5-flash")
+    temperature = llm_cfg.get("temperature", 0.8)
+
+    result = await call_llm(
+        system_msg, user_msg,
+        response_schema=AnthologyPlan,
+        provider=provider,
+        model_name=model_name,
+        temperature=temperature,
+        mock_factory=lambda: AnthologyPlan(
+            title=title,
+            total_episodes=n_topics,
+            episodes=[
+                EpisodeOutline(
+                    episode_number=i,
+                    episode_title=f"[MOCK] {title} #{i}",
+                    focus=f"Mock focus {i}",
+                    key_reveal=f"Mock key reveal {i}",
+                    hook_angle=f"Mock hook angle {i}",
+                    loop_anchor=f"mock loop anchor {i}",
+                    connects_to_next=None,
+                )
+                for i in range(1, n_topics + 1)
+            ],
+        ),
+    )
+
+    if len(result.episodes) != n_topics:
+        raise ValueError(
+            f"[ArcPlanner] LLM 回傳了 {len(result.episodes)} 集，預期 {n_topics} 集。"
+        )
+
+    print(f"✅ [ArcPlanner] Anthology 規劃完成：")
+    for ep in result.episodes:
+        print(f"   Ep{ep.episode_number}: {ep.episode_title}")
+
+    return result

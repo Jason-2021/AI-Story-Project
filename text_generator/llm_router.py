@@ -1,7 +1,7 @@
 import yaml
 import asyncio
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional, Type
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 load_dotenv()
@@ -93,6 +93,34 @@ def _scene_composition_guide(ratio_mode: str, n_scenes: int) -> str:
         lines.append(f"  Scene {i}: {ratio} → {rule}")
     return "\n".join(lines)
 
+def _build_anthology_context(ctx: dict) -> str:
+    loop_anchor = ctx.get("loop_anchor", "")
+    if loop_anchor:
+        n_scenes = _load_yaml(CONFIG_DIR / "base_config.yaml").get("video_settings", {}).get("max_scenes", 5)
+        n_content = n_scenes - 1
+        loop_rule = (
+            f"\n- LOOP STRUCTURE: Generate exactly {n_content} content scenes in the `scenes` array. "
+            f"Scene {n_content} MUST end with the key reveal as a definitive statement. "
+            f"Also generate a separate `loop_scene` field (scene_id=0, max 15 words) whose final sentence "
+            f"echoes: \"{loop_anchor}\". loop_scene is NOT part of scenes."
+        )
+    else:
+        loop_rule = ""
+
+    return (
+        "\n=========================================\n"
+        "📹 EPISODE CONTEXT\n"
+        "=========================================\n"
+        f"Hook Angle — You MUST open with this specific angle: {ctx['hook_angle']}\n"
+        f"Key Reveal — The core takeaway this video builds toward: {ctx['key_reveal']}\n"
+        "\nSCRIPTWRITING RULES:\n"
+        "- The opening hook MUST use the hook_angle above.\n"
+        "- End naturally with the key reveal as a definitive statement.\n"
+        "- This is a standalone video. No teaser, no series reference, no 'follow for more'.\n"
+        f"{loop_rule}"
+    )
+
+
 def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = None) -> str:
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
     profile_config = _load_yaml(CONFIG_DIR / "profiles" / f"{profile_name}.yaml")
@@ -104,7 +132,12 @@ def _build_system_prompt(profile_name: str, episode_context: Optional[dict] = No
 
     hooks = profile_config.get("script", {}).get("hooks", [])
 
-    series_context = _build_series_context(episode_context) if episode_context else ""
+    if episode_context and episode_context.get("is_anthology"):
+        series_context = _build_anthology_context(episode_context)
+    elif episode_context:
+        series_context = _build_series_context(episode_context)
+    else:
+        series_context = ""
 
     if episode_context and episode_context.get("loop_anchor"):
         cta_rule = (
@@ -158,11 +191,15 @@ def _build_series_context(ctx: dict) -> str:
     else:
         loop_rule = ""
 
+    series_lens = ctx.get("series_lens") or ""
+    lens_line = f"Series Lens — the unifying insight this episode must embody: {series_lens}\n" if series_lens else ""
+
     return (
         "\n=========================================\n"
         "📺 SERIES CONTEXT\n"
         "=========================================\n"
         f"This is Episode {ep_num} of {total} in the series: \"{ctx['series_title']}\"\n"
+        f"{lens_line}"
         f"This episode's focus: {ctx['focus']}\n"
         f"Key reveal for this episode: {ctx['key_reveal']}\n"
         f"Hook angle — you MUST open with this specific angle: {ctx['hook_angle']}\n"
@@ -172,6 +209,7 @@ def _build_series_context(ctx: dict) -> str:
         "- The opening hook MUST use the hook angle specified above.\n"
         "- Do NOT recap previous episodes — one brief sentence of context max.\n"
         "- This episode must stand alone for a first-time viewer.\n"
+        "- Frame this episode's story so it illustrates the Series Lens above, without stating the lens explicitly.\n"
         f"{loop_rule}"
     )
 
@@ -185,7 +223,7 @@ def _build_user_prompt(topic: str, details: str, ratio_mode: str = "all_16_9", n
     prompt += f"\n{_scene_composition_guide(ratio_mode, n_scenes)}\n"
     return prompt
 
-def _get_llm_settings(provider: str = "gemini") -> dict:
+def get_llm_settings(provider: str = "gemini") -> dict:
     base_config = _load_yaml(CONFIG_DIR / "base_config.yaml")
     if provider == "openai":
         return base_config.get("openai_llm_settings", {"model_name": "gpt-4o", "temperature": 0.7})
@@ -194,6 +232,32 @@ def _get_llm_settings(provider: str = "gemini") -> dict:
 # =====================================================================
 # 3. 核心路由器
 # =====================================================================
+
+async def call_llm(
+    system_msg: str,
+    user_msg: str,
+    response_schema: Type[BaseModel],
+    provider: str,
+    model_name: str,
+    temperature: float,
+    mock_factory: Optional[Callable[[], BaseModel]] = None,
+) -> BaseModel:
+    p = provider.lower()
+    if p == "prompt":
+        print(system_msg)
+        print(user_msg)
+        return mock_factory()
+    elif p == "gemini":
+        return await generate_with_gemini(
+            system_msg, user_msg, response_schema, model_name, temperature
+        )
+    elif p == "openai":
+        return await generate_with_openai(
+            system_msg, user_msg, response_schema, model_name, temperature
+        )
+    else:
+        raise ValueError(f"[LLM] 不支援的 provider: '{provider}'")
+
 
 async def generate_script_router(request: ScriptRequest) -> VideoScript:
     """
@@ -211,38 +275,23 @@ async def generate_script_router(request: ScriptRequest) -> VideoScript:
     user_msg = _build_user_prompt(request.topic, request.details, ratio_mode, n_scenes)
 
     provider = request.provider.lower()
-    llm_settings = _get_llm_settings(provider)
+    llm_settings = get_llm_settings(provider)
     model_name = llm_settings.get("model_name", "gpt-4o" if provider == "openai" else "gemini-2.5-flash")
     temperature = llm_settings.get("temperature", 0.7)
 
     print(f"📡 [Router] 任務交接給代工廠 -> {provider}.py ...")
 
-    if provider == "gemini":
-        return await generate_with_gemini(
-            system_msg, user_msg,
-            response_schema=VideoScript,
-            model_name=model_name,
-            temperature=temperature,
-        )
-
-    elif provider == "openai":
-        return await generate_with_openai(
-            system_msg, user_msg,
-            response_schema=VideoScript,
-            model_name=model_name,
-            temperature=temperature,
-        )
-
-    elif provider == "prompt":
-        print(system_msg)
-        print(user_msg)
-        return VideoScript(
+    return await call_llm(
+        system_msg, user_msg,
+        response_schema=VideoScript,
+        provider=provider,
+        model_name=model_name,
+        temperature=temperature,
+        mock_factory=lambda: VideoScript(
             title="Prompt Test", description="Test", tags=[],
             scenes=[Scene(scene_id=i, narration="mock", image_prompt="mock") for i in range(1, 5)],
-        )
-
-    else:
-        raise ValueError(f"❌ [Router 錯誤] 不支援的 LLM 供應商: '{provider}'。請選擇 'gemini' 或 'openai'。")
+        ),
+    )
 
 
 # =====================================================================

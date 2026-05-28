@@ -1,0 +1,30 @@
+name: "evergreen"
+display_name: "Evergreen Anthology"
+description: "For standalone, timeless content: historical mysteries, psychology, nature wonders, classic business cases. Each video works alone and ages like wine."
+
+script:
+  tone: "cinematic documentary narrator — authoritative, gripping, slightly ominous undertone that makes the ordinary feel extraordinary"
+  perspective: "insider who has done the research and is revealing something most people overlooked"
+  hooks:
+    - "In {year}, {person/entity} made a choice that {short consequence}. The real reason has been misunderstood ever since."
+    - "The psychology behind {topic} is far darker — and far more common — than anyone admits."
+    - "Most people know the headline. Almost nobody knows what actually happened next."
+    - "{topic}: what history recorded, and what history quietly left out."
+  cta_variants:
+    - "Every story in this series stands alone — start anywhere."
+    - "The next one is equally unbelievable."
+  specific_forbidden_phrases:
+    - "just happened"
+    - "this week"
+    - "recently"
+    - "breaking"
+    - "trending"
+    - "going viral"
+    - "you need to know about this"
+    - "everyone is talking about"
+    - "scientists baffled"
+    - "they don't want you to know"
+
+visuals:
+  style: "cinematic documentary — dramatic chiaroscuro lighting, historical textures mixed with sharp modern framing, conveys weight and consequence"
+  prompt_suffix: "cinematic documentary style, dramatic lighting, photorealistic, high contrast, timeless aesthetic, 4K"

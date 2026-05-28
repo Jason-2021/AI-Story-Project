@@ -16,7 +16,7 @@ from audio_generator.audio_router import generate_audio_router
 from video_renderer.engine import render_video
 
 if TYPE_CHECKING:
-    from series_planner.arc_planner import EpisodeOutline, SeriesArc
+    from series_planner.arc_planner import EpisodeOutline, SeriesArc, AnthologyPlan
 
 
 # =====================================================================
@@ -67,6 +67,7 @@ async def run_episode(
     details: str = "",
     episode_outline: "Optional[EpisodeOutline]" = None,
     series_arc: "Optional[SeriesArc]" = None,
+    anthology_plan: "Optional[AnthologyPlan]" = None,
     fresh: bool = False,
     text_only: bool = False,
 ) -> str:
@@ -79,7 +80,7 @@ async def run_episode(
 
     Returns the run_id on completion.
     """
-    # Build series context dict for system prompt injection (series mode only)
+    # Build context dict for system prompt injection
     episode_context: Optional[dict] = None
     if episode_outline is not None and series_arc is not None:
         previously_covered = [
@@ -95,9 +96,22 @@ async def run_episode(
             "loop_anchor":       episode_outline.loop_anchor,
             "connects_to_next":  episode_outline.connects_to_next,
             "series_title":      series_arc.series_title,
+            "series_lens":       series_arc.series_lens,
             "total_episodes":    series_arc.total_episodes,
             "series_payoff":     series_arc.series_payoff,
             "previously_covered": previously_covered,
+        }
+    elif episode_outline is not None and anthology_plan is not None:
+        episode_context = {
+            "episode_number":   episode_outline.episode_number,
+            "focus":            episode_outline.focus,
+            "key_reveal":       episode_outline.key_reveal,
+            "hook_angle":       episode_outline.hook_angle,
+            "loop_anchor":      episode_outline.loop_anchor,
+            "connects_to_next": None,
+            "series_title":     anthology_plan.title,
+            "total_episodes":   anthology_plan.total_episodes,
+            "is_anthology":     True,
         }
 
     # ── Stage 1: Text ────────────────────────────────────────────────

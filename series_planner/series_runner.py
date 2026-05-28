@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from core import series_state_manager
-from series_planner.arc_planner import plan_series_arc, SeriesArc
+from series_planner.arc_planner import plan_series_arc, SeriesArc, generate_anthology_plan, AnthologyPlan
 from series_planner.episode_runner import run_episode
 from series_planner.merger import merge_episodes
 from video_renderer.engine import mix_bgm
@@ -239,32 +239,106 @@ def run_bgm_only(series_id: str) -> None:
     print("\n✅ BGM-Only 完成")
 
 
-async def run_anthology_mode(job: dict, text_only: bool = False) -> None:
+async def run_anthology_mode(
+    job: dict,
+    text_only: bool = False,
+    provider_override: Optional[str] = None,
+    resume_anthology_id: Optional[str] = None,
+) -> None:
     """
     Anthology pipeline: N independent episodes with the same profile.
-    No arc planning. Each topic runs through the standard pipeline.
+
+    Stage 0: generate_anthology_plan() produces per-episode hook_angle/key_reveal/loop_anchor.
+    Stage 1-3: per-episode pipeline (shared with series mode via run_episode).
+    Stage 4: optional long-form merge.
     """
-    topics: list = job.get("topics", [])
-    profile = job.get("profile", "general")
-    provider = job.get("provider", "gemini")
-    if not topics:
-        print("❌ [Anthology] job YAML 缺少 'topics' 清單")
-        return
+    profile  = job.get("profile", "general")
+    provider = provider_override or job.get("provider", "gemini")
+    combine_long_form = job.get("combine_long_form", True)
+    add_title_cards   = job.get("add_title_cards", True)
 
-    print(f"\n📚 [Anthology] 批次生成 {len(topics)} 部獨立影片 | 風格: {profile}")
+    base_cfg = yaml.safe_load((CONFIG_DIR / "base_config.yaml").read_text(encoding="utf-8"))
+    bgm_cfg  = base_cfg.get("bgm_settings", {})
+    bgm_enabled = bgm_cfg.get("enabled", False) and Path(bgm_cfg.get("path", "")).exists()
 
-    for i, topic in enumerate(topics, 1):
+    # ── Stage 0: Plan ─────────────────────────────────────────────
+    title       = (job.get("title") or job.get("topic", "")).strip()
+    arc_details = job.get("arc_details", "")
+    n_episodes  = int(job.get("n_episodes", 8))
+
+    if resume_anthology_id:
+        plan = series_state_manager.load_series_arc(resume_anthology_id, AnthologyPlan)
+        if plan is not None:
+            anthology_id = resume_anthology_id
+            print(f"\n📂 [Anthology] 繼續 anthology: {anthology_id}")
+        else:
+            print(f"⚠️  [Anthology] 找不到 {resume_anthology_id}/series_arc.json，重新規劃")
+            resume_anthology_id = None
+
+    if not resume_anthology_id:
+        if not title:
+            print("❌ [Anthology] job YAML 缺少 'title'")
+            return
+        plan = await generate_anthology_plan(title, arc_details, profile, n_episodes, provider)
+        anthology_id = series_state_manager.create_anthology(plan.title, profile, plan.total_episodes)
+        series_state_manager.save_series_arc(anthology_id, plan)
+
+    print(f"\n📚 [Anthology] 批次生成 {plan.total_episodes} 部獨立影片 | 風格: {profile}")
+
+    # ── Episode Pipeline ──────────────────────────────────────────
+    for ep_outline in plan.episodes:
+        ep_num    = ep_outline.episode_number
+        ep_run_id = series_state_manager.get_episode_run_id(anthology_id, ep_num)
+
+        if series_state_manager.get_episode_status(anthology_id, ep_num) == "completed":
+            print(f"\n⚡ [Anthology] Episode {ep_num} 已完成，跳過")
+            continue
+
         print(f"\n{'=' * 50}")
-        print(f"📹 [{i} / {len(topics)}] {topic}")
+        print(f"📹 [{ep_num} / {plan.total_episodes}] {ep_outline.episode_title}")
         print("=" * 50)
+
+        series_state_manager.mark_episode_status(anthology_id, ep_num, "in_progress")
         await run_episode(
-            run_id=None,
-            topic=topic,
+            run_id=ep_run_id,
+            topic=ep_outline.focus,
             profile=profile,
             provider=provider,
+            episode_outline=ep_outline,
+            anthology_plan=plan,
             text_only=text_only,
         )
+        if not text_only:
+            series_state_manager.mark_episode_status(anthology_id, ep_num, "completed")
+
+    # ── Long-Form Merge ───────────────────────────────────────────
+    if text_only:
+        print("\n⚠️  [Anthology] text-only 模式，跳過長影片合併。")
+    elif combine_long_form:
+        ep_run_ids = [
+            series_state_manager.get_episode_run_id(anthology_id, i + 1)
+            for i in range(plan.total_episodes)
+        ]
+        merge_episodes(anthology_id, ep_run_ids, add_title_cards)
+
+    # ── BGM ───────────────────────────────────────────────────────
+    if not text_only and bgm_enabled:
+        print("\n🎵 [BGM] 批次混入短影音配樂...")
+        ws = series_state_manager.WORKSPACE_DIR
+        for i in range(plan.total_episodes):
+            ep_run_id  = series_state_manager.get_episode_run_id(anthology_id, i + 1)
+            video_path = ws / ep_run_id / "video" / "output.mp4"
+            out_bgm    = video_path.with_stem("output_bgm")
+            if out_bgm.exists():
+                print(f"  ⚡ ep{i+1:02d} BGM 已存在，跳過")
+            elif video_path.exists():
+                mix_bgm(video_path, bgm_cfg)
+                print(f"  ✅ ep{i+1:02d} BGM 完成")
 
     print("\n" + "=" * 50)
-    print(f"🎉  Anthology 完成！{len(topics)} 部影片已生成")
+    print(f"🎉  Anthology 完成！{plan.total_episodes} 部影片已生成")
+    print(f"    anthology_id : {anthology_id}")
+    print(f"    集數影片     : workspace/{anthology_id}/ep*/video/output.mp4")
+    if combine_long_form and not text_only:
+        print(f"    長影片       : workspace/{anthology_id}/long_form/output.mp4")
     print("=" * 50)

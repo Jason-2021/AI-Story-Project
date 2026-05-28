@@ -54,6 +54,47 @@ def create_series(topic: str, profile_name: str, n_episodes: int) -> str:
     return series_id
 
 
+def create_anthology(topic: str, profile_name: str, n_episodes: int) -> str:
+    """Creates the anthology workspace directory. Same structure as create_series()."""
+    WORKSPACE_DIR.mkdir(exist_ok=True)
+    anthology_id = f"anthology_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    anthology_dir = WORKSPACE_DIR / anthology_id
+    anthology_dir.mkdir()
+    (anthology_dir / "long_form").mkdir()
+
+    episodes: dict[str, str] = {}
+    for i in range(1, n_episodes + 1):
+        ep_key = f"ep{i:02d}"
+        ep_run_id = f"{anthology_id}/{ep_key}"
+        ep_dir = anthology_dir / ep_key
+        ep_dir.mkdir()
+        (ep_dir / "images").mkdir()
+        (ep_dir / "audio").mkdir()
+        _write_json(ep_dir / "task_status.json", {
+            "run_id": ep_run_id,
+            "topic": topic,
+            "profile_name": profile_name,
+            "stages": {
+                "text":   "pending",
+                "images": "pending",
+                "audio":  "pending",
+                "video":  "pending",
+            },
+        })
+        episodes[ep_key] = "pending"
+
+    _write_json(anthology_dir / "series_manifest.json", {
+        "series_run_id": anthology_id,
+        "topic": topic,
+        "profile_name": profile_name,
+        "n_episodes": n_episodes,
+        "episodes": episodes,
+    })
+
+    print(f"📁 [SeriesState] 新 anthology 建立: {anthology_id}（{n_episodes} 集）")
+    return anthology_id
+
+
 def get_latest_series_id() -> Optional[str]:
     if not _LATEST_SERIES_FILE.exists():
         return None

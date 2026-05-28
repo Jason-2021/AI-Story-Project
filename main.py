@@ -160,7 +160,12 @@ if __name__ == "__main__":
         ))
 
     elif mode == "anthology":
-        asyncio.run(run_anthology_mode(job=job, text_only=args.text_only))
+        asyncio.run(run_anthology_mode(
+            job=job,
+            text_only=args.text_only,
+            provider_override=args.provider if args.provider != "gemini" else None,
+            resume_anthology_id=args.resume_series,
+        ))
 
     else:
         asyncio.run(run_solo_mode(args, job))

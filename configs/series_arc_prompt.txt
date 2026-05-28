@@ -11,7 +11,12 @@ Output a single JSON object matching the provided schema exactly. No markdown. N
 =========================================
 SERIES DESIGN PRINCIPLES
 =========================================
-1. NARRATIVE ARC: Build from an accessible entry point to a sophisticated conclusion. Each episode reveals one key insight that builds on the series as a whole.
+1. NARRATIVE ARC — LENS PROGRESSION, NOT PLOT DEPENDENCY:
+   First, define a series_lens (one sentence) — the single core insight that ALL episodes illustrate with different evidence. Then order episodes by depth, not by chronology or story dependency:
+   - EP 1-3: Concrete / financial evidence (accessible entry point)
+   - EP 4-6: Behavioral / spectacle evidence (deepens the pattern)
+   - EP 7-8: Philosophical / civilizational evidence (sophisticated conclusion)
+   A viewer who watches ANY single episode must understand it fully without the others. The narrative arc lives in the viewer's CUMULATIVE PICTURE across episodes, not in episode-to-episode plot dependency.
 
 2. STANDALONE WATCHABILITY: Every episode must work for a viewer who has never seen the other episodes. No "as we discussed last time" dependency that would confuse a first-time viewer.
 
@@ -27,13 +32,25 @@ SERIES DESIGN PRINCIPLES
 
 8. LOOP ANCHOR: For each episode, derive a loop_anchor — a 4-8 word phrase extracted from the hook_angle. This phrase will be echoed in the episode's loop_scene (the very last short-form scene) to create a seamless loop. Example: hook_angle "This city hides a secret no map has ever shown" → loop_anchor "this city's hidden secret".
 
-9. SERIES BUMPERS: Generate intro_scenes (1-2 scenes) for the long-form series intro — warm welcome, series topic overview, and a preview of what viewers will gain. Generate outro_scenes (1-2 scenes) for the long-form outro — thank viewers warmly, recap the series journey in one sentence, and close with a subscribe/comment CTA. Each bumper scene needs both a narration (spoken text) and an image_prompt.
+9. TOPIC ISOLATION — verify before output:
+   No two episodes may cover the same TIME PERIOD + DECISION ARCHETYPE combination.
+   DOMAIN means the TYPE OF DECISION, not the company name. SpaceX and Tesla are different companies but the same decision archetype if both episodes are about "pouring personal money into a failing venture to avoid bankruptcy."
+   - FORBIDDEN: Two episodes where the core narrative is the same crisis pattern, even across different companies.
+   - FORBIDDEN: Two episodes from the same era (within 2 years) where the emotional driver is the same (e.g., both driven by financial desperation).
+   - ALLOWED: Episodes from the same era ONLY IF the decision archetype is clearly different (e.g., financial survival vs. public spectacle).
+   Each episode's hook_angle must approach the series_lens from a unique rhetorical dimension. Assign each episode exactly one dimension from this list — no dimension may repeat across the series:
+     desperation | spectacle | defiance | obsession | counterintuition | sacrifice | scale | reinvention | provocation | conviction
+
+10. SERIES BUMPERS: Generate intro_scenes (1-2 scenes) for the long-form series intro — warm welcome, series topic overview, and a preview of what viewers will gain. Generate outro_scenes (1-2 scenes) for the long-form outro — thank viewers warmly, recap the series journey in one sentence, and close with a subscribe/comment CTA. Each bumper scene needs both a narration (spoken text) and an image_prompt.
 
 =========================================
 QUALITY CHECKLIST (verify before output)
 =========================================
 - Exactly {n_episodes} episodes in the output
+- series_lens is defined (one sentence capturing the central insight all episodes share)
 - All hook_angles are distinct in both content and rhetorical approach
+- Each episode's hook_angle maps to a unique rhetorical dimension (list them — no two may match)
+- No two episodes share the same time_period + domain pair
 - Each episode can be understood without watching others
 - series_payoff is the satisfying conclusion that justifies watching the whole series
 - episode_titles are specific (not generic like "Episode 1: Introduction")

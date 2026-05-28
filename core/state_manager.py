@@ -10,7 +10,12 @@ _LATEST_RUN_FILE = WORKSPACE_DIR / "latest_run_id.txt"
 
 def create_run(topic: str, profile_name: str) -> str:
     WORKSPACE_DIR.mkdir(exist_ok=True)
-    run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    base = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    run_id = base
+    counter = 1
+    while (WORKSPACE_DIR / run_id).exists():
+        run_id = f"{base}_{counter:02d}"
+        counter += 1
     run_dir = WORKSPACE_DIR / run_id
     run_dir.mkdir()
     (run_dir / "images").mkdir()
