@@ -185,6 +185,78 @@ async def plan_series_arc(
     return arc
 
 
+async def generate_metadata_for_topics(
+    topics: list[str],
+    title: str,
+    profile_name: str,
+    provider: str = "gemini",
+) -> AnthologyPlan:
+    """
+    Given a list of specific factual topic strings (from the topic bank),
+    call the LLM to enrich each with hook_angle, key_reveal, and loop_anchor.
+    The LLM does NOT invent new topics — it only wraps the provided facts.
+    """
+    n_topics = len(topics)
+    print(f"\n🎯 [ArcPlanner] 豐富化 {n_topics} 個指定主題 | {title[:50]}")
+
+    template_path = CONFIG_DIR / "episode_enrich_prompt.txt"
+    if not template_path.exists():
+        raise FileNotFoundError(f"[ArcPlanner] 找不到 episode_enrich_prompt.txt: {template_path}")
+    template = template_path.read_text(encoding="utf-8")
+    profile_config = _load_yaml(CONFIG_DIR / "profiles" / f"{profile_name}.yaml")
+    system_msg = template.format(
+        n_topics=n_topics,
+        profile_name=profile_config.get("display_name", profile_name),
+        profile_tone=profile_config.get("script", {}).get("tone", "engaging, informative"),
+    )
+
+    numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(topics))
+    user_msg = (
+        f"Anthology Title: {title}\n"
+        f"Number of Episodes: {n_topics}\n\n"
+        f"Topic List (preserve these facts exactly):\n{numbered}\n"
+    )
+
+    llm_cfg = get_llm_settings(provider)
+    model_name  = llm_cfg.get("model_name", "gemini-2.5-flash")
+    temperature = llm_cfg.get("temperature", 0.7)
+
+    result = await call_llm(
+        system_msg, user_msg,
+        response_schema=AnthologyPlan,
+        provider=provider,
+        model_name=model_name,
+        temperature=temperature,
+        mock_factory=lambda: AnthologyPlan(
+            title=title,
+            total_episodes=n_topics,
+            episodes=[
+                EpisodeOutline(
+                    episode_number=i + 1,
+                    episode_title=f"[MOCK] {topics[i][:60]}",
+                    focus=topics[i],
+                    key_reveal=f"[MOCK] Key reveal for: {topics[i][:50]}",
+                    hook_angle=f"[MOCK] Hook angle {i + 1}",
+                    loop_anchor=f"mock anchor {i + 1}",
+                    connects_to_next=None,
+                )
+                for i in range(n_topics)
+            ],
+        ),
+    )
+
+    if len(result.episodes) != n_topics:
+        raise ValueError(
+            f"[ArcPlanner] LLM 回傳了 {len(result.episodes)} 集，預期 {n_topics} 集。"
+        )
+
+    print(f"✅ [ArcPlanner] 主題豐富化完成：")
+    for ep in result.episodes:
+        print(f"   Ep{ep.episode_number}: {ep.episode_title}")
+
+    return result
+
+
 async def generate_anthology_plan(
     title: str,
     arc_details: str,

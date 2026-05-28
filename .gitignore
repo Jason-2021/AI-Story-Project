@@ -5,6 +5,7 @@ workspace/
 jobs/
 assets/bgm/*.mp3
 assets/bgm/*.wav
+topics_bank/
 
 # Claude Code (tool-specific, machine-local)
 .claude/

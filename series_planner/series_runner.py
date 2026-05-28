@@ -10,7 +10,10 @@ from pathlib import Path
 from typing import Optional
 
 from core import series_state_manager
-from series_planner.arc_planner import plan_series_arc, SeriesArc, generate_anthology_plan, AnthologyPlan
+from series_planner.arc_planner import (
+    plan_series_arc, SeriesArc,
+    generate_anthology_plan, generate_metadata_for_topics, AnthologyPlan,
+)
 from series_planner.episode_runner import run_episode
 from series_planner.merger import merge_episodes
 from video_renderer.engine import mix_bgm
@@ -264,7 +267,8 @@ async def run_anthology_mode(
     # ── Stage 0: Plan ─────────────────────────────────────────────
     title       = (job.get("title") or job.get("topic", "")).strip()
     arc_details = job.get("arc_details", "")
-    n_episodes  = int(job.get("n_episodes", 8))
+    topics_list: list[str] = job.get("topics", [])
+    n_episodes  = int(job.get("n_episodes", len(topics_list) if topics_list else 8))
 
     if resume_anthology_id:
         plan = series_state_manager.load_series_arc(resume_anthology_id, AnthologyPlan)
@@ -276,10 +280,23 @@ async def run_anthology_mode(
             resume_anthology_id = None
 
     if not resume_anthology_id:
-        if not title:
-            print("❌ [Anthology] job YAML 缺少 'title'")
-            return
-        plan = await generate_anthology_plan(title, arc_details, profile, n_episodes, provider)
+        if topics_list:
+            # Path B: specific topics from topic bank — LLM only adds metadata
+            if not title:
+                title = "Incredible Facts You Need to Know"
+            plan = await generate_metadata_for_topics(
+                topics=topics_list,
+                title=title,
+                profile_name=profile,
+                provider=provider,
+            )
+        else:
+            # Path A: LLM generates its own topic angles from a title
+            if not title:
+                print("❌ [Anthology] job YAML must have either 'title' or 'topics'")
+                return
+            plan = await generate_anthology_plan(title, arc_details, profile, n_episodes, provider)
+
         anthology_id = series_state_manager.create_anthology(plan.title, profile, plan.total_episodes)
         series_state_manager.save_series_arc(anthology_id, plan)
 
