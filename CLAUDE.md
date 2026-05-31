@@ -80,9 +80,9 @@ tools/                     獨立工具，不屬於主 pipeline
 - **OpenAI**：`image_generator/openai_dalle_adapter.py` → `generate_image_with_openai()`
 - **切換**：`configs/base_config.yaml` → `image_settings.provider: gemini|openai`（不需改 CLI）
 - **設定**：
-  - Gemini：`image_settings.model_name`
+  - 共用：`image_settings.provider` / `image_settings.scene_ratio_mode`（all_16_9 / all_9_16 / alternate / ...）
+  - Gemini：`gemini_image_settings.model_name`
   - OpenAI：`openai_image_settings.model_name` / `quality`（low/medium/high/auto）
-  - 比例模式：`image_settings.scene_ratio_mode`（all_16_9 / all_9_16 / alternate / ...）
 - **Aspect ratio → size 對應**（OpenAI）：`16:9→1536x1024`、`9:16→1024x1536`、`1:1→1024x1024`
 
 ### Audio / TTS（Stage 2b）
