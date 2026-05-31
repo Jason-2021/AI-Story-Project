@@ -10,8 +10,9 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/TodayILearned — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~800–1000 unique posts
-- **Extra params**: none
-- **Notes**: No account required. Uses Reddit's public JSON API. Rate-limited to ~1 req/sec automatically.
+- **Extra params**: `--recent` (fetch top/month only, for weekly supplement)
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
+- **Notes**: Rate limit (100 req/min) handled automatically by PRAW.
 - **Usage**:
   ```bash
   python tools/topic_scraper.py --source reddit:todayilearned --n 800
@@ -23,7 +24,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/history — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~400–600 unique posts
-- **Extra params**: none
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Usage**:
   ```bash
   python tools/topic_scraper.py --source reddit:history --n 400
@@ -35,7 +37,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/science — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~500–700 unique posts
-- **Extra params**: none
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Usage**:
   ```bash
   python tools/topic_scraper.py --source reddit:science --n 500
@@ -47,7 +50,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/psychology — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~200–350 unique posts
-- **Extra params**: none
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Usage**:
   ```bash
   python tools/topic_scraper.py --source reddit:psychology --n 200
@@ -59,7 +63,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/business — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~200–300 unique posts
-- **Extra params**: none
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Usage**:
   ```bash
   python tools/topic_scraper.py --source reddit:business --n 200
@@ -71,6 +76,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/worldnews — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~400–600 unique posts
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Notes**: Topics tend to be event-based and geography/politics-heavy. Good for `history` and `geography` tags.
 - **Usage**:
   ```bash
@@ -83,6 +90,8 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 
 - **Description**: Reddit r/space — top posts of all time (score ≥ 5000)
 - **Estimated max**: ~300–500 unique posts
+- **Extra params**: `--recent`
+- **Requires**: `pip install praw` + Reddit API credentials (see `tools/REDDIT_APP_SETUP.md`)
 - **Notes**: Strongest source for `science` + `technology` tags.
 - **Usage**:
   ```bash
@@ -103,7 +112,7 @@ Run `python tools/topic_scraper.py --list-sources` to see this list in the termi
 - **Usage**:
   ```bash
   # Full year sweep (recommended for initial bulk load)
-  python tools/topic_scraper.py --source wiki:onthisday --date-range 01-01:12-31
+  python tools/topic_scraper.py --source wiki:onthisday --date-range 01-01:12-31 --n 4000
 
   # Single date
   python tools/topic_scraper.py --source wiki:onthisday --date 2026-05-29

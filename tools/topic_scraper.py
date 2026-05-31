@@ -17,6 +17,7 @@ To add a new source:
 
 import argparse
 import json
+import os
 import random
 import time
 from abc import ABC, abstractmethod
@@ -24,6 +25,9 @@ from datetime import date, timedelta
 from typing import Optional
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import sys
 from pathlib import Path
@@ -152,11 +156,22 @@ class BaseScraper(ABC):
         tags will be auto-assigned if not provided.
         """
 
-    def _get(self, url: str, params: dict = None, retries: int = 3) -> dict:
-        headers = {"User-Agent": "AI-Story-Project/1.0 topic-scraper"}
+    def _get(self, url: str, params: dict = None, retries: int = 5) -> dict:
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            )
+        }
         for attempt in range(retries):
             try:
                 r = requests.get(url, params=params, headers=headers, timeout=15)
+                if r.status_code == 429:
+                    wait = int(r.headers.get("Retry-After", 60))
+                    print(f"  [WARN] Rate limited (429), waiting {wait}s...")
+                    time.sleep(wait)
+                    continue
                 r.raise_for_status()
                 return r.json()
             except Exception as e:
@@ -176,67 +191,64 @@ class RedditScraper(BaseScraper):
         self.source_key = f"reddit:{subreddit}"
         self.description = f"Reddit r/{subreddit} - top posts all time (score >= {self.MIN_SCORE})"
 
+    def _get_reddit(self):
+        try:
+            import praw
+        except ImportError:
+            raise ImportError("praw is required for Reddit scraping. Run: pip install praw")
+
+        client_id = os.environ.get("REDDIT_CLIENT_ID", "")
+        client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
+        if not client_id or not client_secret:
+            raise RuntimeError(
+                "Reddit credentials not found in .env.\n"
+                "See tools/REDDIT_APP_SETUP.md for setup steps.\n"
+                "Then add REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET to your .env file."
+            )
+        return praw.Reddit(
+            client_id=client_id,
+            client_secret=client_secret,
+            user_agent="AI-Story-Project/1.0 personal-topic-scraper",
+        )
+
     def fetch_batch(self, n: int, **kwargs) -> list[dict]:
         recent: bool = kwargs.get("recent", False)
+        reddit = self._get_reddit()
+        sub = reddit.subreddit(self.subreddit)
         results: list[dict] = []
-        after: Optional[str] = None
         seen: set[str] = set()
 
-        # recent=True: only fetch top/month (new content since last week-month)
-        # recent=False: fetch top/all then top/year for maximum coverage
+        # recent=True: only top/month (supplement run)
+        # recent=False: top/all then top/year (full archive)
         time_filters = ("month",) if recent else ("all", "year")
 
-        for time_filter in time_filters:
-            after = None
-            while len(results) < n:
-                params = {"limit": 100, "t": time_filter, "raw_json": 1}
-                if after:
-                    params["after"] = after
-
-                url = f"https://www.reddit.com/r/{self.subreddit}/top.json"
-                try:
-                    data = self._get(url, params)
-                except Exception as e:
-                    print(f"  [WARN] Reddit fetch error: {e}")
-                    break
-
-                children = data.get("data", {}).get("children", [])
-                if not children:
-                    break
-
-                for child in children:
-                    post = child.get("data", {})
-                    url_id = post.get("url", "")
-                    if url_id in seen:
-                        continue
-                    seen.add(url_id)
-
-                    score = post.get("score", 0)
-                    ratio = post.get("upvote_ratio", 0)
-                    title = post.get("title", "").strip()
-
-                    if score < self.MIN_SCORE or ratio < self.MIN_UPVOTE_RATIO:
-                        continue
-                    if not title or len(title) < 20:
-                        continue
-
-                    results.append({
-                        "title": title,
-                        "description": post.get("selftext", "")[:300],
-                        "source_url": f"https://reddit.com{post.get('permalink', '')}",
-                        "source_score": score,
-                    })
+        for tf in time_filters:
+            if len(results) >= n:
+                break
+            try:
+                for post in sub.top(time_filter=tf, limit=1000):
                     if len(results) >= n:
                         break
-
-                after = data.get("data", {}).get("after")
-                if not after:
-                    break
-                time.sleep(1)  # Reddit rate limit
+                    if post.id in seen:
+                        continue
+                    seen.add(post.id)
+                    if post.score < self.MIN_SCORE or post.upvote_ratio < self.MIN_UPVOTE_RATIO:
+                        continue
+                    if not post.title or len(post.title) < 20:
+                        continue
+                    results.append({
+                        "title": post.title,
+                        "description": (post.selftext or "")[:300],
+                        "source_url": f"https://reddit.com{post.permalink}",
+                        "source_score": post.score,
+                    })
+            except Exception as e:
+                print(f"  [WARN] Reddit r/{self.subreddit} ({tf}): {e}")
+                break
 
         if not results:
             raise SourceExhaustedException(
-                f"r/{self.subreddit}: no posts found matching score ≥ {self.MIN_SCORE}"
+                f"r/{self.subreddit}: no posts found matching score >= {self.MIN_SCORE}"
             )
         return results[:n]
 
@@ -286,6 +298,7 @@ class WikiOTDScraper(BaseScraper):
         for month, day in dates:
             if len(results) >= n:
                 break
+            print(f"  fetching {month:02d}/{day:02d}  (collected {len(results)})", end="\r")
             url = f"https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/{month}/{day}"
             try:
                 data = self._get(url)
@@ -308,7 +321,7 @@ class WikiOTDScraper(BaseScraper):
                 })
                 if len(results) >= n:
                     break
-            time.sleep(0.3)
+            time.sleep(1.0)
 
         if not results:
             raise SourceExhaustedException("wiki:onthisday: no events fetched")
@@ -498,6 +511,11 @@ def run_scraper(
         raw = []
     except ImportError as e:
         print(f"[ERROR] [{source_key}] missing dependency: {e}")
+        return
+    except RuntimeError as e:
+        print(f"[ERROR] [{source_key}] configuration error:")
+        for line in str(e).splitlines():
+            print(f"   {line}")
         return
 
     if not raw:
