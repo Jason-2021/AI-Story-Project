@@ -89,6 +89,18 @@ def get_stage_status(run_id: str, stage: str) -> str:
     return _read_json(path).get("stages", {}).get(stage, "unknown")
 
 
+def save_batch_jobs(run_id: str, data: dict) -> None:
+    path = WORKSPACE_DIR / run_id / "batch_jobs.json"
+    _write_json(path, data)
+
+
+def load_batch_jobs(run_id: str) -> Optional[dict]:
+    path = WORKSPACE_DIR / run_id / "batch_jobs.json"
+    if not path.exists():
+        return None
+    return _read_json(path)
+
+
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 

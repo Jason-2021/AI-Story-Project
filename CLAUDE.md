@@ -116,6 +116,23 @@ tools/                     獨立工具，不屬於主 pipeline
 - **CLI**：`--profile finance|science|gaming|...`
 - **新增 profile**：複製現有 YAML → 改名 → 修改欄位，不需改程式碼
 
+### Batch Mode（圖片 + TTS，50% 折扣）
+
+- **Submit**：`series_planner/batch_runner.py` → `run_batch_submit(args, job)`
+  - 執行 Arc planning（series/anthology）+ 所有集數文字生成
+  - 一次打包送出 image batch + TTS batch → 寫 `batch_jobs.json` → EXIT
+- **Collect**：`series_planner/batch_collector.py` → `run_batch_collect(batch_id)`
+  - 查 API status → 下載結果 → 寫 PNG/WAV → 跑 Whisper → render_video → merge
+  - 部分失敗 → realtime fallback 補跑
+- **Image batch adapters**：
+  - Gemini：`image_generator/gemini_image_batch.py` → `submit_image_batch()` / `collect_image_batch()`
+  - OpenAI：`image_generator/openai_image_batch.py` → 同介面
+- **TTS batch adapter**：`audio_generator/gemini_tts_batch.py`（OpenAI 不支援 TTS batch）
+- **Batch state**：`workspace/{id}/batch_jobs.json`（跨 session 持久化，`collected` 欄位追蹤）
+- **狀態工具**：`tools/batch_status.py`（列出所有待收取的 batch）
+- **切換**：CLI `--batch`（submit）/ `--batch-check <id>`（collect）
+- **Batch mode 只影響 Stage 2**；realtime flow 不動
+
 ### Topic Bank 工具
 
 - **SQLite DB**：`tools/topic_bank.py` → `query_by_tag()`、`mark_status_by_title()`

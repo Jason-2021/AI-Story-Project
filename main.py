@@ -21,6 +21,17 @@ AI YouTube Shorts Pipeline — 主調度模組
 
   Anthology Mode（job YAML 中 mode: anthology）：
     python main.py --job jobs/example_anthology.yaml
+
+  Batch Mode（圖片 + TTS 走 Batch API，50% 折扣）：
+    python main.py --topic "..." --profile science --provider gemini --batch --fresh
+    python main.py --job jobs/example_series.yaml --batch
+
+  Batch 收取（電腦重開後）：
+    python main.py --batch-check run_20260531_120000
+    python main.py --batch-check series_20260531_120000
+
+  查看所有待收取的 batch：
+    python tools/batch_status.py
 """
 import asyncio
 import argparse
@@ -33,6 +44,8 @@ load_dotenv()
 from core import state_manager
 from series_planner.episode_runner import run_episode
 from series_planner.series_runner import run_series_mode, run_anthology_mode
+from series_planner.batch_runner import run_batch_submit
+from series_planner.batch_collector import run_batch_collect
 
 
 # =====================================================================
@@ -53,6 +66,9 @@ def _parse_args():
     parser.add_argument("--arc-only",       action="store_true",       help="Series: 只規劃 arc，不生成影片")
     parser.add_argument("--bgm-only",       action="store_true",       help="只對已渲染的影片補加 BGM，不重跑 pipeline")
     parser.add_argument("--episodes",       type=str, default=None,    help="Series: 只跑指定集數，如 '1-2' 或 '1,3'")
+    parser.add_argument("--batch",          action="store_true",       help="Batch 模式：圖片 + TTS 送 Batch API，不等結果直接退出")
+    parser.add_argument("--batch-check",    type=str, default=None,    dest="batch_check",
+                        metavar="ID",                                   help="收取指定 run_id / series_id 的 batch 結果並渲染影片")
     return parser.parse_args()
 
 
@@ -135,6 +151,11 @@ if __name__ == "__main__":
         if args.profile == "general":   args.profile  = job.get("profile", "general")
         if args.provider == "gemini":   args.provider = job.get("provider", "gemini")
 
+    # ── Batch check（最優先，與 mode 無關）
+    if args.batch_check:
+        asyncio.run(run_batch_collect(args.batch_check))
+        raise SystemExit(0)
+
     if args.bgm_only:
         from core import series_state_manager
         from series_planner.series_runner import run_bgm_only
@@ -146,6 +167,11 @@ if __name__ == "__main__":
         raise SystemExit(0)
 
     mode = (job.get("mode", "solo") if job else "solo").lower()
+
+    # ── Batch submit mode ─────────────────────────────────────────────
+    if args.batch:
+        asyncio.run(run_batch_submit(args, job))
+        raise SystemExit(0)
 
     if mode == "series":
         episodes_filter = _parse_episodes_filter(args.episodes)
