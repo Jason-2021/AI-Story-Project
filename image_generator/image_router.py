@@ -36,6 +36,10 @@ def _get_image_settings() -> dict:
     return _load_yaml(CONFIG_DIR / "base_config.yaml").get("image_settings", {})
 
 
+def _get_gemini_image_settings() -> dict:
+    return _load_yaml(CONFIG_DIR / "base_config.yaml").get("gemini_image_settings", {})
+
+
 def _get_openai_image_settings() -> dict:
     return _load_yaml(CONFIG_DIR / "base_config.yaml").get("openai_image_settings", {})
 
@@ -81,9 +85,10 @@ async def generate_images_router(
     print(f"  📐 [ImageRouter] 比例模式: {mode}")
 
     if effective_provider == "gemini":
-        model_name = image_settings.get("model_name")
+        gemini_settings = _get_gemini_image_settings()
+        model_name = gemini_settings.get("model_name")
         if not model_name:
-            raise ValueError("❌ [ImageRouter] base_config.yaml 的 image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
+            raise ValueError("❌ [ImageRouter] base_config.yaml 的 gemini_image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
         tasks = [
             _generate_single(scene, output_dir, model_name, ratios[i], "gemini")
             for i, scene in enumerate(scenes)
