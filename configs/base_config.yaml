@@ -33,6 +33,7 @@ tts_settings:
   sample_rate: 24000
 
 image_settings:
+  provider: "openai"             # gemini | openai（優先覆蓋 image_router 預設值）
   model_name: "gemini-2.5-flash-image"
   # 控制每個場景的圖片生成比例：
   #   all_16_9      — 全部 16:9（橫式，Ken Burns 水平移動）
@@ -42,6 +43,10 @@ image_settings:
   #   wide_first    — 第 1 場 16:9，其餘 9:16
   #   portrait_heavy — 9:16, 9:16, 16:9, 9:16, 9:16... 循環
   scene_ratio_mode: "alternate"
+
+openai_image_settings:
+  model_name: "gpt-image-2"
+  quality: "low"                 # low | medium | high | auto
 
 video_renderer:
   canvas_width: 1080

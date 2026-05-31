@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .gemini_imagen_adapter import generate_image_with_gemini
+from .openai_dalle_adapter import generate_image_with_openai
 from text_generator.llm_router import Scene
 
 # =====================================================================
@@ -33,6 +34,10 @@ def _load_yaml(file_path: Path) -> dict:
 
 def _get_image_settings() -> dict:
     return _load_yaml(CONFIG_DIR / "base_config.yaml").get("image_settings", {})
+
+
+def _get_openai_image_settings() -> dict:
+    return _load_yaml(CONFIG_DIR / "base_config.yaml").get("openai_image_settings", {})
 
 
 def _get_scene_ratios(mode: str, n_scenes: int) -> list:
@@ -66,24 +71,36 @@ async def generate_images_router(
     output_dir 由呼叫端（state_manager.get_image_dir）提供，模組本身不依賴 state_manager。
     回傳 ImageResult 列表，包含每個 scene 的本地圖片路徑。
     """
-    print(f"\n🖼️  [ImageRouter] 啟動圖片生成 | {len(scenes)} 個場景 | 引擎: {provider}")
-
     image_settings = _get_image_settings()
-    model_name = image_settings.get("model_name")
-    if not model_name:
-        raise ValueError("❌ [ImageRouter] base_config.yaml 的 image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
+    # config 的 provider 欄位優先；未設定時沿用呼叫端傳入的 provider 參數
+    effective_provider = image_settings.get("provider", provider).lower()
     mode = image_settings.get("scene_ratio_mode", "all_16_9")
     ratios = _get_scene_ratios(mode, len(scenes))
+
+    print(f"\n🖼️  [ImageRouter] 啟動圖片生成 | {len(scenes)} 個場景 | 引擎: {effective_provider}")
     print(f"  📐 [ImageRouter] 比例模式: {mode}")
 
-    if provider.lower() == "gemini":
+    if effective_provider == "gemini":
+        model_name = image_settings.get("model_name")
+        if not model_name:
+            raise ValueError("❌ [ImageRouter] base_config.yaml 的 image_settings.model_name 未設定，拒絕使用預設模型以避免意外計費。")
         tasks = [
-            _generate_single(scene, output_dir, model_name, ratios[i])
+            _generate_single(scene, output_dir, model_name, ratios[i], "gemini")
             for i, scene in enumerate(scenes)
         ]
         return await asyncio.gather(*tasks)
 
-    raise ValueError(f"❌ [ImageRouter] 不支援的供應商: '{provider}'。請選擇 'gemini'。")
+    if effective_provider == "openai":
+        openai_settings = _get_openai_image_settings()
+        model_name = openai_settings.get("model_name", "gpt-image-2")
+        quality = openai_settings.get("quality", "low")
+        tasks = [
+            _generate_single(scene, output_dir, model_name, ratios[i], "openai", quality)
+            for i, scene in enumerate(scenes)
+        ]
+        return await asyncio.gather(*tasks)
+
+    raise ValueError(f"❌ [ImageRouter] 不支援的供應商: '{effective_provider}'。請選擇 'gemini' 或 'openai'。")
 
 
 async def _generate_single(
@@ -91,15 +108,26 @@ async def _generate_single(
     output_dir: Path,
     model_name: str,
     aspect_ratio: str,
+    provider: str = "gemini",
+    quality: str = "low",
 ) -> ImageResult:
     output_path = output_dir / f"scene_{scene.scene_id:02d}.png"
     print(f"  📤 [Scene {scene.scene_id}] 送出圖片請求...")
-    await generate_image_with_gemini(
-        prompt=scene.image_prompt,
-        output_path=output_path,
-        model_name=model_name,
-        aspect_ratio=aspect_ratio,
-    )
+    if provider == "openai":
+        await generate_image_with_openai(
+            prompt=scene.image_prompt,
+            output_path=output_path,
+            model_name=model_name,
+            aspect_ratio=aspect_ratio,
+            quality=quality,
+        )
+    else:
+        await generate_image_with_gemini(
+            prompt=scene.image_prompt,
+            output_path=output_path,
+            model_name=model_name,
+            aspect_ratio=aspect_ratio,
+        )
     print(f"  ✅ [Scene {scene.scene_id}] 圖片已存至: {output_path.name}")
     return ImageResult(scene_id=scene.scene_id, file_path=str(output_path))
 
