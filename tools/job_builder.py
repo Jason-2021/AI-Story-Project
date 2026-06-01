@@ -17,8 +17,12 @@ Workflow:
 
 import argparse
 import json
+import time
+import yaml
+import requests
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -32,6 +36,27 @@ from tools.topic_bank import (
 )
 
 JOBS_DIR = Path(__file__).parent.parent / "jobs" / "daily"
+
+# ── Wikipedia context fetcher ─────────────────────────────────────────────
+
+def _fetch_wiki_context(source_url: str) -> str:
+    """Wikipedia REST API で記事の intro paragraph を取得（~200 words）。"""
+    if not source_url.startswith("https://en.wikipedia.org/wiki/"):
+        return ""
+    article_path = source_url.replace("https://en.wikipedia.org/wiki/", "")
+    api_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(article_path)}"
+    try:
+        r = requests.get(
+            api_url,
+            headers={"User-Agent": "AI-Story-Project/1.0"},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            return r.json().get("extract", "")[:800]
+    except Exception:
+        pass
+    return ""
+
 
 # ── Title templates per category tag ──────────────────────────────────────
 
@@ -133,15 +158,29 @@ def build_job(tag: str, profile: str, n: int, output_path: Path) -> None:
         topics = topics[:n]
 
     title = _pick_title(tag)
-    topic_list = "\n".join(f'  - "{t["title"]}"' for t in topics)
 
-    yaml_content = f"""mode: anthology
-title: "{title}"
-profile: {profile}
-provider: gemini
-topics:
-{topic_list}
-"""
+    # 對有 Wikipedia source_url 的題目抓 intro context
+    topic_contexts = {}
+    wiki_topics = [t for t in topics if t.get("source_url", "").startswith("https://en.wikipedia.org/wiki/")]
+    if wiki_topics:
+        print(f"   抓取 {len(wiki_topics)} 筆 Wikipedia context...")
+        for t in wiki_topics:
+            ctx = _fetch_wiki_context(t["source_url"])
+            if ctx:
+                topic_contexts[t["title"]] = ctx
+            time.sleep(0.3)
+
+    job_data = {
+        "mode":    "anthology",
+        "title":   title,
+        "profile": profile,
+        "provider": "gemini",
+        "topics":  [t["title"] for t in topics],
+    }
+    if topic_contexts:
+        job_data["topic_contexts"] = topic_contexts
+
+    yaml_content = yaml.dump(job_data, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(yaml_content, encoding="utf-8")

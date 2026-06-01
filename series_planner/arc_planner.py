@@ -190,6 +190,7 @@ async def generate_metadata_for_topics(
     title: str,
     profile_name: str,
     provider: str = "gemini",
+    topic_contexts: dict = None,
 ) -> AnthologyPlan:
     """
     Given a list of specific factual topic strings (from the topic bank),
@@ -210,7 +211,12 @@ async def generate_metadata_for_topics(
         profile_tone=profile_config.get("script", {}).get("tone", "engaging, informative"),
     )
 
-    numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(topics))
+    lines = []
+    for i, t in enumerate(topics):
+        lines.append(f"{i+1}. {t}")
+        if topic_contexts and t in topic_contexts:
+            lines.append(f"   [Background] {topic_contexts[t]}")
+    numbered = "\n".join(lines)
     user_msg = (
         f"Anthology Title: {title}\n"
         f"Number of Episodes: {n_topics}\n\n"

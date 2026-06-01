@@ -125,20 +125,33 @@ tools/                     獨立工具，不屬於主 pipeline
   - 查 API status → 下載結果 → 寫 PNG/WAV → 跑 Whisper → render_video → merge
   - 部分失敗 → realtime fallback 補跑
 - **Image batch adapters**：
-  - Gemini：`image_generator/gemini_image_batch.py` → `submit_image_batch()` / `collect_image_batch()`
+  - Gemini：`image_generator/gemini_image_batch.py` → `submit_image_batch()` / `collect_image_batch()` / `get_image_batch_status()`
   - OpenAI：`image_generator/openai_image_batch.py` → 同介面
-- **TTS batch adapter**：`audio_generator/gemini_tts_batch.py`（OpenAI 不支援 TTS batch）
+- **TTS batch adapter**：`audio_generator/gemini_tts_batch.py`（OpenAI 不支援 TTS batch）→ 含 `get_tts_batch_status()`
+- **`get_*_batch_status()`**：純查詢狀態，不下載結果，供 `batch_status.py` 使用（避免下載大檔）
 - **Batch state**：`workspace/{id}/batch_jobs.json`（跨 session 持久化，`collected` 欄位追蹤）
-- **狀態工具**：`tools/batch_status.py`（列出所有待收取的 batch）
+- **狀態工具**：`tools/batch_status.py`（列出所有待收取的 batch，使用 lightweight status 查詢）
+- **Collect 容錯**：單集 render 失敗不中止，印出 `--resume` 提示繼續其他集
 - **切換**：CLI `--batch`（submit）/ `--batch-check <id>`（collect）
 - **Batch mode 只影響 Stage 2**；realtime flow 不動
 
 ### Topic Bank 工具
 
-- **SQLite DB**：`tools/topic_bank.py` → `query_by_tag()`、`mark_status_by_title()`
-- **瀏覽**：`tools/topic_browser.py`（CLI 互動介面）
-- **抓題**：`tools/topic_scraper.py` → `scrape_reddit()` / `scrape_wikipedia()`
-- **建 Job**：`tools/job_builder.py` → `build_job_yaml(tag, profile, n)`
+- **SQLite DB**：`tools/topic_bank.py`
+  - Schema：`id, title, description, source_type, source_url, source_score, scraped_at, tags, status, used_in, used_at, event_date`
+  - `event_date` 格式：OTD → `"MM-DD"`（e.g. `"02-18"`），DYK → `"YYYY-MM"`（e.g. `"2023-03"`）
+  - 查詢：`query_by_tag(category_tag, style_tags)`、`query_by_event_date(month, day)`
+  - 批次寫入：`bulk_insert_topics(items)` — 單一 transaction，比逐筆快 100x
+- **瀏覽**：`tools/peek_topics.py`（快速預覽，不改 status）
+  - `python tools/peek_topics.py science` — 撈 category
+  - `python tools/peek_topics.py --date 6 1` — 撈 6/1 的 onthisday 事件
+- **抓題**：`tools/topic_scraper.py`
+  - `wiki:onthisday`：存 `event_date="MM-DD"`
+  - `wiki:dyk`：存 `event_date="YYYY-MM"` + `source_url`（Wikipedia 文章連結）
+- **建 Job**：`tools/job_builder.py --tag science --profile science --n 8`
+  - 有 Wikipedia `source_url` 的題目自動抓 intro context（Wikipedia REST API）
+  - Context 存進 job YAML 的 `topic_contexts` dict，傳給 LLM 減少幻覺
+- **查詢不改 status**；只有 `job_builder` 會把選出的題目標成 `used`
 
 ---
 

@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS topics (
     tags         TEXT    NOT NULL DEFAULT '[]',
     status       TEXT    NOT NULL DEFAULT 'unused',
     used_in      TEXT,
-    used_at      TEXT
+    used_at      TEXT,
+    event_date   TEXT
 );
 """
 
@@ -89,6 +90,65 @@ def insert_topic(
         return cur.lastrowid
 
 
+def bulk_insert_topics(items: list[dict]) -> tuple[int, int]:
+    """
+    批次寫入。先一筆一筆 SELECT 檢查 duplicate（讀取不需 commit，速度快），
+    收集所有非重複項，最後一次 transaction INSERT 全部。
+    Returns (inserted, duped).
+
+    每個 item dict 須有：title, source_type, tags（list）
+    可選：description, source_url, source_score, event_date
+    """
+    if not items:
+        return 0, 0
+
+    now = datetime.now(timezone.utc).isoformat()
+    to_insert = []
+    duped = 0
+
+    with _connect() as conn:
+        # Step 1: 一筆一筆 SELECT 檢查（讀取，無 fsync 成本）
+        for item in items:
+            source_url = item.get("source_url", "")
+            title      = item.get("title", "")
+            source_type = item.get("source_type", "")
+
+            if source_url:
+                row = conn.execute(
+                    "SELECT id FROM topics WHERE source_url = ?", (source_url,)
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT id FROM topics WHERE title = ? AND source_type = ?",
+                    (title, source_type),
+                ).fetchone()
+
+            if row:
+                duped += 1
+            else:
+                to_insert.append((
+                    title,
+                    item.get("description", ""),
+                    source_type,
+                    source_url,
+                    item.get("source_score"),
+                    now,
+                    json.dumps(item.get("tags", [])),
+                    item.get("event_date"),
+                ))
+
+        # Step 2: 一次 INSERT 全部（單一 transaction，一次 fsync）
+        if to_insert:
+            conn.executemany(
+                """INSERT INTO topics
+                   (title, description, source_type, source_url, source_score, scraped_at, tags, event_date)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                to_insert,
+            )
+
+    return len(to_insert), duped
+
+
 def mark_status(topic_id: int, status: str, used_in: str = "") -> None:
     """Update status. For 'used', also set used_in and used_at."""
     with _connect() as conn:
@@ -143,6 +203,23 @@ def query_by_tag(
             results = filtered
 
         return results[:limit]
+
+
+def query_by_event_date(month: int, day: int, limit: int = 20) -> list[dict]:
+    """
+    撈 wiki:onthisday 類型：event_date 格式為 "MM-DD"。
+    例如 query_by_event_date(2, 18) 撈 2/18 的歷史事件。
+    """
+    pattern = f"{month:02d}-{day:02d}"
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT * FROM topics
+               WHERE status = 'unused' AND event_date = ?
+               ORDER BY scraped_at DESC
+               LIMIT ?""",
+            (pattern, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 def query_selected(category_tag: str = "", limit: int = 8) -> list[dict]:

@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tools.topic_bank import insert_topic
+from tools.topic_bank import bulk_insert_topics
 
 # ── Auto-tagger ────────────────────────────────────────────────────────────
 
@@ -318,6 +318,7 @@ class WikiOTDScraper(BaseScraper):
                     "description": "",
                     "source_url": "",
                     "source_score": None,
+                    "event_date": f"{month:02d}-{day:02d}",
                 })
                 if len(results) >= n:
                     break
@@ -371,6 +372,8 @@ class WikiDYKScraper(BaseScraper):
                 for m in reversed(self._MONTHS)
             ]
 
+        month_idx = {m: i + 1 for i, m in enumerate(self._MONTHS)}
+
         for year, month in month_pairs:
             if len(results) >= n:
                 break
@@ -390,20 +393,39 @@ class WikiDYKScraper(BaseScraper):
                 continue
 
             soup = BeautifulSoup(r.text, "html.parser")
+            prev_count = len(results)
+            event_date = f"{year}-{month_idx[month]:02d}"
+
             for li in soup.find_all("li"):
                 text = li.get_text(separator=" ", strip=True)
                 if "... that" in text.lower() or text.startswith("..."):
-                    clean = text.replace("... that", "Did you know that").strip()
+                    clean = (text
+                             .replace("... that", "Did you know that")
+                             .replace("...that", "Did you know that")
+                             .strip())
                     if len(clean) > 30:
+                        # 抓第一個正常 Wikipedia 文章連結（排除特殊頁面）
+                        source_url = ""
+                        for a_tag in li.find_all("a", href=True):
+                            href = a_tag.get("href", "")
+                            if href.startswith("/wiki/") and ":" not in href:
+                                source_url = "https://en.wikipedia.org" + href
+                                break
                         results.append({
                             "title": clean[:300],
                             "description": "",
-                            "source_url": "",  # empty: dedup by title (each DYK fact is unique text)
+                            "source_url": source_url,
                             "source_score": None,
+                            "event_date": event_date,
                         })
                 if len(results) >= n:
                     break
+
+            new_count = len(results) - prev_count
+            print(f"  [{year}/{month}] +{new_count} 筆，累計 {len(results)}/{n}", end="\r", flush=True)
             time.sleep(0.5)
+
+        print()  # 換行，清除進度列
 
         if not results:
             raise SourceExhaustedException("wiki:dyk: no entries fetched (beautifulsoup4 required)")
@@ -523,33 +545,36 @@ def run_scraper(
         return
 
     print(f"   fetched {len(raw)} raw items, deduping + writing...")
-    inserted = 0
-    duped = 0
+    source_type = scraper.source_key.split(":")[0]
 
+    if dry_run:
+        for item in raw:
+            title = item.get("title", "").strip()
+            if not title:
+                continue
+            tags = item.get("tags") or auto_tag(title + " " + item.get("description", ""))
+            print(f"   [DRY] {title[:80]}  tags={tags}")
+        print(f"[OK] [{source_key}] dry-run {len(raw)} items")
+        return
+
+    # 準備 items，補齊 tags 和 source_type
+    prepared = []
     for item in raw:
         title = item.get("title", "").strip()
         if not title:
             continue
         tags = item.get("tags") or auto_tag(title + " " + item.get("description", ""))
+        prepared.append({
+            "title":        title,
+            "source_type":  source_type,
+            "tags":         tags,
+            "description":  item.get("description", ""),
+            "source_url":   item.get("source_url", ""),
+            "source_score": item.get("source_score"),
+            "event_date":   item.get("event_date"),
+        })
 
-        if dry_run:
-            print(f"   [DRY] {title[:80]}  tags={tags}")
-            inserted += 1
-            continue
-
-        result = insert_topic(
-            title=title,
-            source_type=scraper.source_key.split(":")[0],
-            tags=tags,
-            description=item.get("description", ""),
-            source_url=item.get("source_url", ""),
-            source_score=item.get("source_score"),
-        )
-        if result is None:
-            duped += 1
-        else:
-            inserted += 1
-
+    inserted, duped = bulk_insert_topics(prepared)
     print(f"[OK] [{source_key}] inserted {inserted}, skipped {duped} duplicates")
     if len(raw) < n:
         print(f"[WARN] [{source_key}] only got {len(raw)}/{n} items (source may be near exhaustion)")
