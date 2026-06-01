@@ -10,7 +10,6 @@ Batch submit orchestrator.
 
 import asyncio
 import json
-import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -155,9 +154,11 @@ async def _run_batch_solo(args, job: Optional[dict]) -> None:
         "series_or_run_id": run_id,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
         "collected": False,
-        "render_config": {
-            "combine_long_form": False,
-            "add_title_cards": False,
+        "solo_args": {
+            "topic": topic,
+            "profile": profile,
+            "provider": provider,
+            "details": details,
         },
         "tts_sample_rate": tts_settings.get("sample_rate", 24000),
         "image": {
@@ -194,13 +195,11 @@ async def _run_batch_multi(args, job: dict, mode: str) -> None:
         generate_anthology_plan, generate_metadata_for_topics, AnthologyPlan,
     )
 
-    profile      = job.get("profile", "general")
-    provider     = args.provider if args.provider != "gemini" else job.get("provider", "gemini")
-    n_episodes   = int(job.get("n_episodes", 8))
-    combine_lf   = job.get("combine_long_form", True)
-    title_cards  = job.get("add_title_cards", True)
-    topic        = (job.get("title") or job.get("topic", "")).strip()
-    arc_details  = job.get("arc_details", "")
+    profile     = job.get("profile", "general")
+    provider    = args.provider if args.provider != "gemini" else job.get("provider", "gemini")
+    n_episodes  = int(job.get("n_episodes", 8))
+    topic       = (job.get("title") or job.get("topic", "")).strip()
+    arc_details = job.get("arc_details", "")
 
     image_settings = _get_image_settings()
     image_provider = image_settings.get("provider", "gemini")
@@ -251,8 +250,6 @@ async def _run_batch_multi(args, job: dict, mode: str) -> None:
         print(f"\n  📝 Episode {ep_num}：{ep_outline.focus}")
 
         if mode == "series":
-            from series_planner.arc_planner import SeriesArc as _SA
-            arc_ref = arc
             request = ScriptRequest(
                 topic=ep_outline.focus, profile_name=profile,
                 provider=provider,
@@ -320,13 +317,10 @@ async def _run_batch_multi(args, job: dict, mode: str) -> None:
     batch_data = {
         "mode": mode,
         "series_or_run_id": series_id,
-        "n_episodes": n_episodes,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
         "collected": False,
-        "render_config": {
-            "combine_long_form": combine_lf,
-            "add_title_cards": title_cards,
-        },
+        "job": job,
+        "provider_override": provider if provider != job.get("provider", "gemini") else None,
         "tts_sample_rate": tts_settings.get("sample_rate", 24000),
         "image": {
             "provider": image_provider,

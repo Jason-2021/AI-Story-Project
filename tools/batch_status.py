@@ -21,7 +21,7 @@ WORKSPACE_DIR = Path(__file__).parent.parent / "workspace"
 
 
 def _check_status_quick(batch_jobs: dict) -> tuple[str, str]:
-    """Return (img_status_label, aud_status_label) without downloading results."""
+    """Return (img_status_label, aud_status_label)，只查狀態不下載結果。"""
     img_info = batch_jobs.get("image", {})
     aud_info = batch_jobs.get("audio", {})
 
@@ -32,14 +32,11 @@ def _check_status_quick(batch_jobs: dict) -> tuple[str, str]:
         provider = info.get("provider", "gemini")
         try:
             if provider == "gemini":
-                from image_generator.gemini_image_batch import collect_image_batch
-                status, ok, err = collect_image_batch(bid)
+                from image_generator.gemini_image_batch import get_image_batch_status
+                return get_image_batch_status(bid)
             else:
-                from image_generator.openai_image_batch import collect_image_batch
-                status, ok, err = collect_image_batch(bid)
-            if status == "pending":
-                return "IN_PROGRESS"
-            return status.upper()
+                from image_generator.openai_image_batch import get_image_batch_status
+                return get_image_batch_status(bid)
         except Exception as e:
             return f"ERROR({e})"
 
@@ -48,11 +45,8 @@ def _check_status_quick(batch_jobs: dict) -> tuple[str, str]:
         if not bid:
             return "CLEARED"
         try:
-            from audio_generator.gemini_tts_batch import collect_tts_batch
-            status, ok, err = collect_tts_batch(bid)
-            if status == "pending":
-                return "IN_PROGRESS"
-            return status.upper()
+            from audio_generator.gemini_tts_batch import get_tts_batch_status
+            return get_tts_batch_status(bid)
         except Exception as e:
             return f"ERROR({e})"
 

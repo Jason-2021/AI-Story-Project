@@ -56,6 +56,20 @@ def submit_image_batch(scenes_map: dict, model_name: str, quality: str) -> str:
     return batch.id
 
 
+def get_image_batch_status(batch_id: str) -> str:
+    """輕量查詢，只回傳狀態字串，不下載結果。供 batch_status.py 使用。"""
+    status = client.batches.retrieve(batch_id).status
+    if status in _PENDING_STATUSES:
+        return "IN_PROGRESS"
+    if status == "expired":
+        return "EXPIRED"
+    if status in _FAILED_STATUSES:
+        return "FAILED"
+    if status == "completed":
+        return "COMPLETED"
+    return status.upper()
+
+
 def collect_image_batch(batch_id: str) -> tuple[str, dict, dict]:
     """
     Returns (status, successes, failures).

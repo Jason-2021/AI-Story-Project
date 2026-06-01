@@ -289,6 +289,7 @@ async def run_anthology_mode(
                 title=title,
                 profile_name=profile,
                 provider=provider,
+                topic_contexts=job.get("topic_contexts"),
             )
         else:
             # Path A: LLM generates its own topic angles from a title
