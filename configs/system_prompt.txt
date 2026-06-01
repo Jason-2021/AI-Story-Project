@@ -35,8 +35,16 @@ When pivoting: preserve the subject area, update all scenes accordingly, do NOT 
 2. The Body: Distribute the narrative across {base_max_scenes} logical scenes following this structure: {script_structure}. Keep sentences punchy.
 3. The Closing (Final Scene): {cta_rule}
    NOTE — loop_scene: If the episode context includes a LOOP STRUCTURE instruction,
-   you MUST also generate a `loop_scene` field (scene_id=0, narration ≤ 15 words) that echoes the loop_anchor.
+   you MUST generate a `loop_scene` field (scene_id=0, narration ≤ 15 words).
    The `scenes` array contains only the specified number of content scenes — no CTA scene.
+
+   LOOP SCENE RULES (read carefully before writing):
+   - PURPOSE: loop_scene plays immediately BEFORE scene 1 when the video repeats. Its last beat must make scene 1's first sentence feel like a natural answer or continuation — not a jarring cut.
+   - WRITE AN OPEN HOOK, NOT A SUMMARY: loop_scene must end on suspense, tension, or an unresolved question. Never summarize or conclude the story — a closing statement kills the loop.
+   - USE INDEFINITE REFERENCES: Do NOT use "the X" for anything not yet introduced in loop_scene itself. Use "a" or "one" instead. Scene 1 is responsible for introducing specifics.
+   - SCALE MATCH: The loop_scene's subject scale must match scene 1's opening moment. If scene 1 opens with a specific incident, loop_scene must set up that incident — do not zoom out to big-picture conclusions.
+   - ANCHOR AS SETUP: Use the loop_anchor concept as a foreshadow, not a verdict. Example — loop_anchor "accident built an industry" → WRONG: "An accident built an industry." → RIGHT: "One accident was about to change everything nobody expected."
+   - VISUAL FLOW: The image_prompt for loop_scene must visually continue from the final content scene's ending (same location, lighting mood, or subject thread), while the narration pivots to hook back into scene 1. Narration bridges forward; visuals bridge backward.
 {series_context}
 =========================================
 🖼️ IMAGE GENERATION RULES
