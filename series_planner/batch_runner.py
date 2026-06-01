@@ -114,7 +114,7 @@ async def _run_batch_solo(args, job: Optional[dict]) -> None:
     topic    = args.topic or (job or {}).get("topic") or (job or {}).get("title") or ""
     details  = args.details or (job or {}).get("details", "")
     profile  = args.profile
-    provider = args.provider
+    provider = args.llm_provider
 
     image_settings = _get_image_settings()
     image_provider = image_settings.get("provider", "gemini")
@@ -196,7 +196,7 @@ async def _run_batch_multi(args, job: dict, mode: str) -> None:
     )
 
     profile     = job.get("profile", "general")
-    provider    = args.provider if args.provider != "gemini" else job.get("provider", "gemini")
+    provider    = args.llm_provider
     n_episodes  = int(job.get("n_episodes", 8))
     topic       = (job.get("title") or job.get("topic", "")).strip()
     arc_details = job.get("arc_details", "")

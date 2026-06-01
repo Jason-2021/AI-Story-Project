@@ -144,6 +144,12 @@ async def run_episode(
         state_manager.save_script(run_id, script)
         state_manager.mark_stage(run_id, "text", "completed")
 
+        # Write description and hashtags for YouTube upload
+        video_dir = state_manager.get_video_dir(run_id)
+        video_dir.mkdir(parents=True, exist_ok=True)
+        (video_dir / "description.txt").write_text(script.description or "", encoding="utf-8")
+        (video_dir / "hashtags.txt").write_text("\n".join(script.tags or []), encoding="utf-8")
+
     print(f"✅ 劇本：{script.title}（{len(script.scenes)} 個場景）")
 
     if provider == "prompt" or text_only:

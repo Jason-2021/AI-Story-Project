@@ -12,7 +12,7 @@ text_generator/run_test.py — 獨立測試腳本：文字生成
   python text_generator/run_test.py --topic "Ancient Rome" --profile history --out-dir workspace/test_001
 
   # 不呼叫 API，僅印出 prompt
-  python text_generator/run_test.py --job jobs/example_series.yaml --out-dir workspace/test_001 --provider prompt
+  python text_generator/run_test.py --job jobs/example_series.yaml --out-dir workspace/test_001 --llm-provider prompt
 """
 import sys
 from pathlib import Path
@@ -30,7 +30,7 @@ def _parse_args():
     p.add_argument("--job",        type=str, default=None,      help="job YAML 路徑（可代替 CLI 參數）")
     p.add_argument("--topic",      type=str, default=None,      help="系列/單集主題")
     p.add_argument("--profile",    type=str, default="general", help="風格名稱")
-    p.add_argument("--provider",   type=str, default="gemini",  help="LLM 供應商")
+    p.add_argument("--llm-provider", type=str, default="gemini", dest="llm_provider", help="LLM 供應商 (gemini | openai | prompt)")
     p.add_argument("--n-episodes", type=int, default=0,         dest="n_episodes",
                    help="集數（>1 啟動系列模式並規劃 arc；0 或 1 = 單集）")
     p.add_argument("--out-dir",    type=str, required=True,     dest="out_dir", help="輸出資料夾")
@@ -49,8 +49,8 @@ def _apply_job(args):
         args.details = job.get("arc_details") or job.get("details", "")
     if args.profile == "general":
         args.profile = job.get("profile", "general")
-    if args.provider == "gemini":
-        args.provider = job.get("provider", "gemini")
+    if args.llm_provider == "gemini":
+        args.llm_provider = job.get("provider", "gemini")
     if args.n_episodes == 0:
         args.n_episodes = int(job.get("n_episodes", 0))
 
@@ -65,7 +65,7 @@ async def _run_series(args, out_dir: Path):
         arc_details=args.details,
         profile_name=args.profile,
         n_episodes=args.n_episodes,
-        provider=args.provider,
+        provider=args.llm_provider,
     )
     (out_dir / "series_arc.json").write_text(
         arc.model_dump_json(indent=2), encoding="utf-8"
@@ -101,7 +101,7 @@ async def _run_series(args, out_dir: Path):
             topic=ep_outline.focus,
             details=args.details,
             profile_name=args.profile,
-            provider=args.provider,
+            provider=args.llm_provider,
             episode_context=episode_context,
         )
         script = await generate_script_router(req)
@@ -121,7 +121,7 @@ async def _run_solo(args, out_dir: Path):
         topic=args.topic,
         details=args.details,
         profile_name=args.profile,
-        provider=args.provider,
+        provider=args.llm_provider,
     )
     script = await generate_script_router(req)
     (out_dir / "script.json").write_text(

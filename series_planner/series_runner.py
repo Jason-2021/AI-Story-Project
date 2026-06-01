@@ -101,6 +101,21 @@ async def run_series_mode(
         arc = await plan_series_arc(topic, arc_details, profile, n_episodes, provider)
         series_state_manager.save_series_arc(series_id, arc)
 
+        if arc.thumbnail_prompt and not text_only:
+            print("\n🖼️  [Series] 生成長影音縮圖...")
+            from image_generator.image_router import generate_images_router
+            from text_generator.llm_router import Scene
+            thumb_dir = series_state_manager.WORKSPACE_DIR / series_id / "long_form"
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            await generate_images_router(
+                [Scene(scene_id=1, narration="", image_prompt=arc.thumbnail_prompt)],
+                output_dir=thumb_dir,
+            )
+            generated = thumb_dir / "scene_001.png"
+            if generated.exists():
+                generated.rename(thumb_dir / "thumbnail.png")
+                print(f"  ✅ 縮圖已存：long_form/thumbnail.png")
+
     if long_form_intro_outro and not resume_series_id:
         print("\n🎬 [Series] 生成長影音 Intro/Outro 素材...")
         await _generate_bumper_assets(series_id, arc)
@@ -159,6 +174,21 @@ async def run_series_mode(
                 for i in range(n_episodes)
             ]
             merge_episodes(series_id, ep_run_ids, add_title_cards)
+
+            lf_dir = series_state_manager.WORKSPACE_DIR / series_id / "long_form"
+            lf_dir.mkdir(parents=True, exist_ok=True)
+            (lf_dir / "description.txt").write_text(arc.long_form_description or "", encoding="utf-8")
+            (lf_dir / "hashtags.txt").write_text("\n".join(arc.long_form_hashtags or []), encoding="utf-8")
+
+            from video_renderer.subtitle_writer import generate_longform_subtitles
+            generate_longform_subtitles(
+                series_id=series_id,
+                ep_run_ids=ep_run_ids,
+                add_title_cards=add_title_cards,
+                output_dir=lf_dir,
+                workspace=series_state_manager.WORKSPACE_DIR,
+            )
+            print("  ✅ 字幕已生成：long_form/subtitles.srt / .vtt")
     elif combine_long_form and episodes_filter is not None:
         print("\n⚠️  [Series] 使用了 --episodes 篩選，跳過長影片合併（需全集完成才能合併）。")
 
@@ -301,6 +331,21 @@ async def run_anthology_mode(
         anthology_id = series_state_manager.create_anthology(plan.title, profile, plan.total_episodes)
         series_state_manager.save_series_arc(anthology_id, plan)
 
+        if plan.thumbnail_prompt and not text_only:
+            print("\n🖼️  [Anthology] 生成長影音縮圖...")
+            from image_generator.image_router import generate_images_router
+            from text_generator.llm_router import Scene
+            thumb_dir = series_state_manager.WORKSPACE_DIR / anthology_id / "long_form"
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            await generate_images_router(
+                [Scene(scene_id=1, narration="", image_prompt=plan.thumbnail_prompt)],
+                output_dir=thumb_dir,
+            )
+            generated = thumb_dir / "scene_001.png"
+            if generated.exists():
+                generated.rename(thumb_dir / "thumbnail.png")
+                print(f"  ✅ 縮圖已存：long_form/thumbnail.png")
+
     print(f"\n📚 [Anthology] 批次生成 {plan.total_episodes} 部獨立影片 | 風格: {profile}")
 
     # ── Episode Pipeline ──────────────────────────────────────────
@@ -333,11 +378,33 @@ async def run_anthology_mode(
     if text_only:
         print("\n⚠️  [Anthology] text-only 模式，跳過長影片合併。")
     elif combine_long_form:
-        ep_run_ids = [
-            series_state_manager.get_episode_run_id(anthology_id, i + 1)
+        all_done = all(
+            series_state_manager.get_episode_status(anthology_id, i + 1) == "completed"
             for i in range(plan.total_episodes)
-        ]
-        merge_episodes(anthology_id, ep_run_ids, add_title_cards)
+        )
+        if not all_done:
+            print("\n⚠️  [Anthology] 部分集數未完成，跳過長影片合併。")
+        else:
+            ep_run_ids = [
+                series_state_manager.get_episode_run_id(anthology_id, i + 1)
+                for i in range(plan.total_episodes)
+            ]
+            merge_episodes(anthology_id, ep_run_ids, add_title_cards)
+
+            lf_dir = series_state_manager.WORKSPACE_DIR / anthology_id / "long_form"
+            lf_dir.mkdir(parents=True, exist_ok=True)
+            (lf_dir / "description.txt").write_text(plan.long_form_description or "", encoding="utf-8")
+            (lf_dir / "hashtags.txt").write_text("\n".join(plan.long_form_hashtags or []), encoding="utf-8")
+
+            from video_renderer.subtitle_writer import generate_longform_subtitles
+            generate_longform_subtitles(
+                series_id=anthology_id,
+                ep_run_ids=ep_run_ids,
+                add_title_cards=add_title_cards,
+                output_dir=lf_dir,
+                workspace=series_state_manager.WORKSPACE_DIR,
+            )
+            print("  ✅ 字幕已生成：long_form/subtitles.srt / .vtt")
 
     # ── BGM ───────────────────────────────────────────────────────
     if not text_only and bgm_enabled:

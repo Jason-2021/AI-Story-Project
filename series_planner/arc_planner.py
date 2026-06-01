@@ -59,6 +59,18 @@ class SeriesArc(BaseModel):
         default=None,
         description="1-2 scenes for the long-form series outro. Thank viewers, recap the journey, end with a subscribe/comment CTA.",
     )
+    long_form_description: str = Field(
+        default="",
+        description="YouTube description for the full long-form series video, ~200-300 words English. Opens with the series hook, summarizes each episode in 1-2 sentences, closes with a reason to watch the full series."
+    )
+    long_form_hashtags: List[str] = Field(
+        default_factory=list,
+        description="8-12 hashtags for the long-form video, each starting with #, English only. Mix series-specific and general tags."
+    )
+    thumbnail_prompt: str = Field(
+        default="",
+        description="Image generation prompt for the series thumbnail. Dark, moody, cinematic, deep shadows, NO text, NO bright backgrounds, 16:9 composition. Leave space for title text overlay."
+    )
 
 
 class AnthologyPlan(BaseModel):
@@ -66,6 +78,18 @@ class AnthologyPlan(BaseModel):
     total_episodes: int = Field(description="Total number of episodes.")
     episodes: List[EpisodeOutline] = Field(
         description="Ordered list of episode outlines. connects_to_next must be null for all episodes."
+    )
+    long_form_description: str = Field(
+        default="",
+        description="YouTube description for the full anthology compilation video, ~200-300 words English. Opens with a hook about the theme, highlights 2-3 standout episodes, closes with a reason to watch the full compilation."
+    )
+    long_form_hashtags: List[str] = Field(
+        default_factory=list,
+        description="8-12 hashtags for the anthology compilation, each starting with #, English only. Mix topic-specific and general tags."
+    )
+    thumbnail_prompt: str = Field(
+        default="",
+        description="Image generation prompt for the anthology thumbnail. Dark, moody, cinematic, deep shadows, NO text, NO bright backgrounds, 16:9 composition. Leave space for title text overlay."
     )
 
 

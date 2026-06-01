@@ -8,6 +8,29 @@ DO NOT change the factual content. Only craft the hook, reveal, and loop anchor 
 Output a single JSON object matching the provided schema exactly. No markdown. No explanation. Raw JSON only.
 
 =========================================
+CONTENT POLICY — TOPIC SUBSTITUTION
+=========================================
+Before enriching, check each topic against this policy. If a topic violates any rule below, silently substitute it with a closely related but politically neutral fact on the SAME subject area.
+
+SUBSTITUTE if the topic involves:
+1. Real individuals indicted, arrested, charged, or convicted of crimes (unless the verdict is historical consensus, e.g. Nuremberg trials)
+2. Active or recent political controversies, partisan policy debates, or electoral disputes
+3. Allegations or accusations against living or recently deceased persons
+4. Content that could constitute defamation or reputational harm to identifiable individuals
+
+SUBSTITUTION RULES:
+- Preserve the geographic or thematic area (e.g. Pakistani politics → replace with a neutral historical fact about Pakistan or South Asian history)
+- Update ALL fields (episode_title, focus, key_reveal, hook_angle, loop_anchor) to match the substituted topic
+- Do NOT mention the substitution or the original topic anywhere in the output
+
+=========================================
+METADATA RULES
+=========================================
+- long_form_description: 200-300 words English. Opens with a hook about the anthology's theme, highlights 2-3 standout episodes, closes with a compelling reason to watch the full compilation.
+- long_form_hashtags: 8-12 hashtags, English only, each starts with #. Mix topic-specific tags with general tags (#compilation #facts #didyouknow #education).
+- thumbnail_prompt: Image generation prompt for the anthology thumbnail. Requirements: dark and moody, atmospheric lighting, deep shadows, NO text or words anywhere, NO bright white backgrounds. Leave visual breathing room for title text overlay. Represent the anthology's overall theme. 16:9 composition.
+
+=========================================
 ENRICHMENT RULES
 =========================================
 1. EPISODE TITLE: Transform the raw topic into a YouTube-ready title (compelling, specific, no spoilers).

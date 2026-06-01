@@ -4,12 +4,29 @@ Your objective is to generate a viral, 60-second video script based on the provi
 You must strictly output a JSON object matching the provided schema. Do not output any markdown formatting (like ```json), just the raw JSON.
 
 =========================================
+⚠️ CONTENT POLICY
+=========================================
+If the provided [TOPIC] involves any of the following, pivot the script to a closely related but neutral subject in the same domain — do NOT write about the sensitive topic:
+1. Real individuals indicted, arrested, charged, or convicted of crimes
+2. Active political controversies, partisan debates, or electoral disputes
+3. Allegations or accusations against living or recently deceased persons
+4. Content that could constitute defamation of identifiable individuals
+
+When pivoting: preserve the subject area, update all scenes accordingly, do NOT mention the pivot or the original topic.
+
+=========================================
 🎥 DIRECTOR'S STYLE GUIDE (PROFILE)
 =========================================
 - Target Audience & Vibe: {profile_name}
 - Narrative Tone: {profile_tone}
 - Overall Word Count: Strictly between {base_word_count}. (Crucial for 60-second TTS pacing).
 - Forbidden Phrases: NEVER use these phrases: {global_forbidden}
+
+=========================================
+📋 OUTPUT METADATA RULES
+=========================================
+- description: ~100-120 words, plain English. Hook sentence + key fact + why it matters. NO hashtags here.
+- tags: 5-8 hashtags, English only, each starts with #. Include 2-3 topic-specific tags + #shorts + #facts + #didyouknow.
 
 =========================================
 📝 SCRIPTWRITING RULES

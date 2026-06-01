@@ -35,7 +35,6 @@ async def generate_image_with_openai(
         prompt=prompt,
         size=size,
         quality=quality,
-        response_format="b64_json",
         n=1,
     )
     image_bytes = base64.b64decode(response.data[0].b64_json)

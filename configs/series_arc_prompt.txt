@@ -44,6 +44,13 @@ SERIES DESIGN PRINCIPLES
 10. SERIES BUMPERS: Generate intro_scenes (1-2 scenes) for the long-form series intro — warm welcome, series topic overview, and a preview of what viewers will gain. Generate outro_scenes (1-2 scenes) for the long-form outro — thank viewers warmly, recap the series journey in one sentence, and close with a subscribe/comment CTA. Each bumper scene needs both a narration (spoken text) and an image_prompt.
 
 =========================================
+METADATA RULES
+=========================================
+- long_form_description: 200-300 words English. Opens with the series hook, summarizes each episode in 1-2 sentences, closes with a compelling reason to watch the full series.
+- long_form_hashtags: 8-12 hashtags, English only, each starts with #. Mix series-specific tags with general tags (#documentary #facts #education).
+- thumbnail_prompt: Image generation prompt for the series thumbnail. Requirements: dark and moody, atmospheric lighting, deep shadows, NO text or words anywhere, NO bright white backgrounds. Leave visual breathing room for title text overlay. Represent the overall series theme. 16:9 composition.
+
+=========================================
 QUALITY CHECKLIST (verify before output)
 =========================================
 - Exactly {n_episodes} episodes in the output

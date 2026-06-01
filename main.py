@@ -23,7 +23,7 @@ AI YouTube Shorts Pipeline — 主調度模組
     python main.py --job jobs/example_anthology.yaml
 
   Batch Mode（圖片 + TTS 走 Batch API，50% 折扣）：
-    python main.py --topic "..." --profile science --provider gemini --batch --fresh
+    python main.py --topic "..." --profile science --llm-provider gemini --batch --fresh
     python main.py --job jobs/example_series.yaml --batch
 
   Batch 收取（電腦重開後）：
@@ -57,7 +57,7 @@ def _parse_args():
     parser.add_argument("--topic",          type=str, default=None,    help="影片核心主題（單集模式）")
     parser.add_argument("--details",        type=str, default="",      help="額外背景資料")
     parser.add_argument("--profile",        type=str, default="general", help="風格名稱")
-    parser.add_argument("--provider",       type=str, default="gemini",  help="LLM 供應商")
+    parser.add_argument("--llm-provider",   type=str, default="gemini",  dest="llm_provider", help="LLM 供應商 (gemini | openai | prompt)，優先於 base_config.yaml")
     parser.add_argument("--fresh",          action="store_true",       help="強制建立新 run，忽略快取")
     parser.add_argument("--resume",         type=str, default=None,    help="恢復指定的單集 run_id")
     parser.add_argument("--job",            type=str, default=None,    help="Job YAML 檔案路徑")
@@ -91,7 +91,7 @@ async def run_solo_mode(args, job: dict = None) -> None:
     topic   = args.topic
     details = args.details
     profile = args.profile
-    provider = args.provider
+    provider = args.llm_provider
     # Determine run_id
     if args.resume:
         run_id = args.resume
@@ -149,7 +149,12 @@ if __name__ == "__main__":
         if not args.topic:              args.topic    = job.get("topic") or job.get("title")
         if not args.details:            args.details  = job.get("details", "")
         if args.profile == "general":   args.profile  = job.get("profile", "general")
-        if args.provider == "gemini":   args.provider = job.get("provider", "gemini")
+
+    # Resolve llm_provider: CLI > job YAML > base_config > "gemini"
+    if args.llm_provider == "gemini":
+        _base_cfg = yaml.safe_load(Path("configs/base_config.yaml").read_text(encoding="utf-8"))
+        job_provider = job.get("provider") if job else None
+        args.llm_provider = job_provider or _base_cfg.get("llm_provider", "gemini")
 
     # ── Batch check（最優先，與 mode 無關）
     if args.batch_check:
@@ -180,7 +185,7 @@ if __name__ == "__main__":
             resume_series_id=args.resume_series,
             arc_only=args.arc_only,
             episodes_filter=episodes_filter,
-            provider_override=args.provider if args.provider != "gemini" else None,
+            provider_override=args.llm_provider if args.llm_provider != "gemini" else None,
             text_only=args.text_only,
             fresh=args.fresh,
         ))
@@ -189,7 +194,7 @@ if __name__ == "__main__":
         asyncio.run(run_anthology_mode(
             job=job,
             text_only=args.text_only,
-            provider_override=args.provider if args.provider != "gemini" else None,
+            provider_override=args.llm_provider if args.llm_provider != "gemini" else None,
             resume_anthology_id=args.resume_series,
         ))
 

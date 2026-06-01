@@ -21,6 +21,13 @@ EPISODE DESIGN PRINCIPLES
 6. 60-SECOND SCOPE: Every episode must be deliverable in a single 60-second video.
 
 =========================================
+METADATA RULES
+=========================================
+- long_form_description: 200-300 words English. Opens with a hook about the anthology's theme, summarizes 2-3 standout episodes, closes with a compelling reason to watch the full compilation.
+- long_form_hashtags: 8-12 hashtags, English only, each starts with #. Mix topic-specific tags with general tags (#compilation #facts #didyouknow #education).
+- thumbnail_prompt: Image generation prompt for the anthology thumbnail. Requirements: dark and moody, atmospheric lighting, deep shadows, NO text or words anywhere, NO bright white backgrounds. Leave visual breathing room for title text overlay. Represent the anthology's overall theme. 16:9 composition.
+
+=========================================
 QUALITY CHECKLIST
 =========================================
 - Exactly {n_topics} episodes

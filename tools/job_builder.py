@@ -37,6 +37,24 @@ from tools.topic_bank import (
 
 JOBS_DIR = Path(__file__).parent.parent / "jobs" / "daily"
 
+# ── Sensitive topic filter ─────────────────────────────────────────────────
+
+_SENSITIVE_KEYWORDS = [
+    # criminal/legal
+    "indicted", "arrested", "charged with", "convicted", "conspiracy to",
+    "kidnap", "kidnapping", "assassination", "assassinated",
+    "war crime", "war crimes", "genocide", "sentenced to", "imprisoned",
+    "executed for", "bomb plot", "terror plot", "murder of",
+    # personal harm
+    "rape", "sexual assault", "child abuse",
+]
+
+
+def _is_sensitive(title: str) -> bool:
+    lower = title.lower()
+    return any(kw in lower for kw in _SENSITIVE_KEYWORDS)
+
+
 # ── Wikipedia context fetcher ─────────────────────────────────────────────
 
 def _fetch_wiki_context(source_url: str) -> str:
@@ -146,6 +164,13 @@ def build_job(tag: str, profile: str, n: int, output_path: Path) -> None:
             if len(topics) >= n:
                 break
 
+    # Filter sensitive topics before processing
+    before = len(topics)
+    topics = [t for t in topics if not _is_sensitive(t["title"])]
+    removed = before - len(topics)
+    if removed:
+        print(f"[FILTER] {removed} topic(s) removed (sensitive keyword match).")
+
     if not topics:
         print(f"[ERROR] No topics found for tag='{tag}'. Run the scraper first:")
         print(f"   python tools/topic_scraper.py --source reddit:todayilearned --n 300")
@@ -174,7 +199,6 @@ def build_job(tag: str, profile: str, n: int, output_path: Path) -> None:
         "mode":    "anthology",
         "title":   title,
         "profile": profile,
-        "provider": "gemini",
         "topics":  [t["title"] for t in topics],
     }
     if topic_contexts:

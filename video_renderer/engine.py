@@ -96,6 +96,7 @@ def _build_scene_clip(
     audio_path: Path,
     word_timestamps: list,
     settings: dict,
+    burn_captions: bool = True,
 ) -> VideoClip:
     """
     建立單一 scene 的 VideoClip（含 Ken Burns/Zoom 效果 + 字幕 + 音訊）。
@@ -139,18 +140,21 @@ def _build_scene_clip(
         def _get_frame(t, _img=scaled_np, _dur=duration, _dir=direction, _za=zoom_amt):
             return make_zoom_frame(_img, t, _dur, _dir, canvas_w, canvas_h, _za)
 
-    font        = load_font(font_size)
-    word_groups = group_words(word_timestamps, n_words)
+    if burn_captions:
+        font        = load_font(font_size)
+        word_groups = group_words(word_timestamps, n_words)
 
-    def make_frame(t,
-                   _get=_get_frame,
-                   _groups=word_groups,
-                   _font=font,
-                   _cw=canvas_w, _ch=canvas_h,
-                   _py=pos_y, _hc=hi_color, _uc=uppercase, _mw=max_w_ratio):
-        frame = _get(t)
-        frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc, _uc, _mw)
-        return frame
+        def make_frame(t,
+                       _get=_get_frame,
+                       _groups=word_groups,
+                       _font=font,
+                       _cw=canvas_w, _ch=canvas_h,
+                       _py=pos_y, _hc=hi_color, _uc=uppercase, _mw=max_w_ratio):
+            frame = _get(t)
+            frame = render_captions(frame, t, _groups, _cw, _ch, _font, _py, _hc, _uc, _mw)
+            return frame
+    else:
+        make_frame = _get_frame
 
     clip = VideoClip(make_frame, duration=duration).with_fps(fps)
     clip = clip.with_audio(audio_clip)
@@ -296,7 +300,7 @@ def render_longform(
                 type("W", (), {"word": w["word"], "start": w["start"], "end": w["end"]})()
                 for w in audio_item["timestamps"]
             ]
-            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings))
+            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings, burn_captions=False))
             global_scene_idx += 1
 
     for i, ep_run_id in enumerate(ep_run_ids):
@@ -324,7 +328,7 @@ def render_longform(
                 for w in audio_data["timestamps"]
             ]
             all_clips.append(
-                _build_scene_clip(global_scene_idx, image_path, audio_path, timestamps, settings)
+                _build_scene_clip(global_scene_idx, image_path, audio_path, timestamps, settings, burn_captions=False)
             )
             global_scene_idx += 1
 
@@ -343,7 +347,7 @@ def render_longform(
                 type("W", (), {"word": w["word"], "start": w["start"], "end": w["end"]})()
                 for w in audio_item["timestamps"]
             ]
-            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings))
+            all_clips.append(_build_scene_clip(global_scene_idx, img_path, aud_path, timestamps, settings, burn_captions=False))
             global_scene_idx += 1
 
     if transition_name in TRANSITION_REGISTRY:
